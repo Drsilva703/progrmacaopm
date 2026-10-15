@@ -47,7 +47,7 @@ export function findConflicts(trip: Trip, trips: Trip[]) {
 }
 
 export const WEEKDAYS = ["DOMINGO", "SEGUNDA-FEIRA", "TERÇA-FEIRA", "QUARTA-FEIRA", "QUINTA-FEIRA", "SEXTA-FEIRA", "SÁBADO"];
-export const weekday = (s: string) => WEEKDAYS[fromISO(s).getDay()];
+export const weekday = (s: string): string => WEEKDAYS[fromISO(s).getDay()] ?? "";
 export const fmtBR = (s: string) => {
   const [y = "", m = "", d = ""] = s.split("-");
   return `${d}/${m}/${y.slice(2)}`;
