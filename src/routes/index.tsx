@@ -203,7 +203,7 @@ function WeekView({ data, date, onPick }: { data: Data; date: string; onPick: (d
   const days = Array.from({ length: 7 }, (_, i) => addDaysISO(start, i));
   return (
     <div className="grid grid-cols-1 gap-2 md:grid-cols-7">
-      {days.map((d) => <div key={d}><p className="mb-1 text-center text-xs font-bold uppercase text-muted-foreground">{weekday(d).split("-")[0]}</p><DayCell data={data} iso={d} onPick={onPick} /></div>)}
+      {days.map((d) => <div key={d}><p className="mb-1 text-center text-xs font-bold uppercase text-muted-foreground">{weekday(d).split("-")[0] ?? ""}</p><DayCell data={data} iso={d} onPick={onPick} /></div>)}
     </div>
   );
 }

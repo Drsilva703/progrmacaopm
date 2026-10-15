@@ -20,7 +20,7 @@ export interface Shift { date: string; time: string; names: string }
 const pad = (n: number) => String(n).padStart(2, "0");
 export const toISO = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 export const fromISO = (s: string) => {
-  const [y, m, d] = s.split("-").map(Number);
+  const [y = 0, m = 1, d = 1] = s.split("-").map(Number);
   return new Date(y, m - 1, d);
 };
 export const addDaysISO = (s: string, n: number) => {
@@ -49,6 +49,6 @@ export function findConflicts(trip: Trip, trips: Trip[]) {
 export const WEEKDAYS = ["DOMINGO", "SEGUNDA-FEIRA", "TERÇA-FEIRA", "QUARTA-FEIRA", "QUINTA-FEIRA", "SEXTA-FEIRA", "SÁBADO"];
 export const weekday = (s: string) => WEEKDAYS[fromISO(s).getDay()];
 export const fmtBR = (s: string) => {
-  const [y, m, d] = s.split("-");
+  const [y = "", m = "", d = ""] = s.split("-");
   return `${d}/${m}/${y.slice(2)}`;
 };

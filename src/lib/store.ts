@@ -15,8 +15,8 @@ function seed(): Data {
   const vehicles = plates.map((plate) => ({ id: uid(), plate }));
   const date = "2026-10-16";
   const trips: Trip[] = routes.map((rt, i) => ({
-    id: uid(), date, orders: i < 2 ? [] : ["2026287", "2026288"], routeId: rt.id, vehicleId: vehicles[i].id,
-    driverId: drivers[i].id, status: "CARREGANDO", days: rt.days, time: i < 2 ? "08:00" : i === 7 ? "07:00" : "06:00",
+    id: uid(), date, orders: i < 2 ? [] : ["2026287", "2026288"], routeId: rt.id, vehicleId: vehicles[i]!.id,
+    driverId: drivers[i]!.id, status: "CARREGANDO", days: rt.days, time: i < 2 ? "08:00" : i === 7 ? "07:00" : "06:00",
   }));
   return { routes, drivers, vehicles, trips, shifts: [{ date, time: "08:00", names: "MARCOS - RONALDO" }] };
 }
