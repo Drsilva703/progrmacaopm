@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Trash2, Pencil, AlertTriangle, Truck, Printer } from "lucide-react";
+import { useState } from "react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Copy, AlertTriangle, Truck, Printer } from "lucide-react";
 import {
   STATUSES, addDaysISO, arrivalDate, availableFrom, findConflicts, fmtBR, fromISO, toISO, weekday,
   type Trip, type Status,
@@ -28,14 +28,13 @@ function App() {
   const { data, update } = useData();
   const [tab, setTab] = useState<Tab>("dia");
   const [date, setDate] = useState("2026-10-16");
-  const [editing, setEditing] = useState<Trip | null>(null);
 
   if (!data) return <div className="p-10 text-muted-foreground">Carregando…</div>;
 
-  const newTrip = (d = date) => setEditing({
-    id: "", date: d, orders: [], routeId: data.routes[0]?.id ?? "", vehicleId: "", driverId: "",
-    status: "PROGRAMADO", days: data.routes[0]?.days ?? 1, time: "06:00",
-  });
+  const newTrip = () => update((d) => ({ ...d, trips: [...d.trips, {
+    id: uid(), date, orders: [], routeId: "", vehicleId: "", driverId: "", status: "PROGRAMADO", days: 1, time: "06:00",
+  }] }));
+  const goDay = () => setTab("dia");
 
   return (
     <div className="min-h-screen bg-background">
@@ -55,18 +54,14 @@ function App() {
       </header>
       <main className="mx-auto max-w-7xl px-4 py-6">
         {tab !== "cadastros" && (
-          <DateBar date={date} setDate={setDate} step={tab === "mes" ? "mes" : tab === "semana" ? 7 : 1} onAdd={() => newTrip()} />
+          <DateBar date={date} setDate={setDate} step={tab === "mes" ? "mes" : tab === "semana" ? 7 : 1} onAdd={() => { newTrip(); goDay(); }} />
         )}
-        {tab === "dia" && <DaySheet data={data} update={update} date={date} onEdit={setEditing} />}
+        {tab === "dia" && <DaySheet data={data} update={update} date={date}/>}
         {tab === "semana" && <WeekView data={data} date={date} onPick={(d) => { setDate(d); setTab("dia"); }} />}
         {tab === "mes" && <MonthView data={data} date={date} onPick={(d) => { setDate(d); setTab("dia"); }} />}
         {tab === "recursos" && <Availability data={data} date={date} />}
         {tab === "cadastros" && <Registry data={data} update={update} />}
       </main>
-      {editing && <TripForm data={data} trip={editing} onClose={() => setEditing(null)} onSave={(t) => {
-        update((d) => ({ ...d, trips: t.id ? d.trips.map((x) => (x.id === t.id ? t : x)) : [...d.trips, { ...t, id: uid() }] }));
-        setEditing(null);
-      }} />}
     </div>
   );
 }
@@ -301,51 +296,6 @@ function Availability({ data, date }: { data: Data; date: string }) {
 }
 
 const inp = "w-full rounded border border-input bg-card px-2 py-1.5 text-sm";
-
-function TripForm({ data, trip, onClose, onSave }: { data: Data; trip: Trip; onClose: () => void; onSave: (t: Trip) => void }) {
-  const [t, setT] = useState(trip);
-  const [orders, setOrders] = useState(trip.orders.join(", "));
-  const L = lookup(data);
-  const draft = { ...t, orders: orders.split(/[,\s]+/).filter(Boolean) };
-  const c = useMemo(() => findConflicts(draft, data.trips), [t, data.trips]); // eslint-disable-line react-hooks/exhaustive-deps
-  const free = (key: "driverId" | "vehicleId", id: string) => findConflicts({ ...draft, [key]: id }, data.trips)[key === "driverId" ? "driver" : "vehicle"].length === 0;
-  const set = (p: Partial<Trip>) => setT((x) => ({ ...x, ...p }));
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-md bg-background p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <h2 className="mb-4 font-display text-xl font-bold uppercase">{trip.id ? "Editar saída" : "Nova saída"}</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="col-span-2 text-xs font-semibold">Pedido(s)<input className={inp} value={orders} onChange={(e) => setOrders(e.target.value)} placeholder="2026287, 2026288" /></label>
-          <label className="text-xs font-semibold">Data de saída<input type="date" className={inp} value={t.date} onChange={(e) => set({ date: e.target.value })} /></label>
-          <label className="text-xs font-semibold">Horário<input type="time" className={inp} value={t.time} onChange={(e) => set({ time: e.target.value })} /></label>
-          <label className="text-xs font-semibold">Rota<select className={inp} value={t.routeId} onChange={(e) => set({ routeId: e.target.value, days: data.routes.find((r) => r.id === e.target.value)?.days ?? t.days })}>
-            {data.routes.map((r) => <option key={r.id} value={r.id}>{r.code}</option>)}</select></label>
-          <label className="text-xs font-semibold">Duração (dias)<input type="number" min={0} className={inp} value={t.days} onChange={(e) => set({ days: Math.max(0, +e.target.value) })} /></label>
-          <label className="text-xs font-semibold">Motorista<select className={inp} value={t.driverId} onChange={(e) => set({ driverId: e.target.value })}>
-            <option value="">—</option>{data.drivers.map((d) => <option key={d.id} value={d.id}>{d.name}{free("driverId", d.id) ? "" : " (ocupado)"}</option>)}</select></label>
-          <label className="text-xs font-semibold">Veículo<select className={inp} value={t.vehicleId} onChange={(e) => set({ vehicleId: e.target.value })}>
-            <option value="">—</option>{data.vehicles.map((v) => <option key={v.id} value={v.id}>{v.plate}{free("vehicleId", v.id) ? "" : " (ocupado)"}</option>)}</select></label>
-          <label className="text-xs font-semibold">Status<select className={inp} value={t.status} onChange={(e) => set({ status: e.target.value as Status })}>{STATUSES.map((s) => <option key={s}>{s}</option>)}</select></label>
-          <div className="text-xs font-semibold">Chegada calculada<div className="py-1.5 text-base">{fmtBR(arrivalDate(t.date, t.days))} ({weekday(arrivalDate(t.date, t.days)).toLowerCase()})</div></div>
-        </div>
-        {(c.driver.length > 0 || c.vehicle.length > 0) && (
-          <div className="mt-3 rounded border border-destructive bg-destructive/10 p-2 text-sm text-destructive">
-            <b>Conflito de programação:</b>
-            {c.driver.map((x) => <div key={"d" + x.id}>Motorista já em {L.route(x.routeId)} ({fmtBR(x.date)}–{fmtBR(arrivalDate(x.date, x.days))})</div>)}
-            {c.vehicle.map((x) => <div key={"v" + x.id}>Veículo já em {L.route(x.routeId)} ({fmtBR(x.date)}–{fmtBR(arrivalDate(x.date, x.days))})</div>)}
-          </div>
-        )}
-        <div className="mt-5 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded border border-border px-4 py-2 text-sm">Cancelar</button>
-          <button disabled={!t.routeId} onClick={() => {
-            if ((c.driver.length || c.vehicle.length) && !confirm("Há conflito de motorista/veículo. Salvar mesmo assim?")) return;
-            onSave(draft);
-          }} className="rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">Salvar</button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function Registry({ data, update }: { data: Data; update: (f: (d: Data) => Data) => void }) {
   const [route, setRoute] = useState({ code: "", days: 1 });
