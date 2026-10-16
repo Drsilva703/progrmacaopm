@@ -52,3 +52,11 @@ export const fmtBR = (s: string) => {
   const [y = "", m = "", d = ""] = s.split("-");
   return `${d}/${m}/${y.slice(2)}`;
 };
+
+/** Rotas previstas por dia da semana: SSA seg–sáb; PM 01–10 seg/qua/sex; PM 04–06 ter/qui/sáb; domingo nada. */
+export function plannedRouteCodes(date: string): string[] {
+  const wd = fromISO(date).getDay();
+  if (wd === 0) return [];
+  const pm = wd % 2 === 1 ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] : [4, 5, 6];
+  return ["PM_FEC_SSA", "CO_FEC_SSA", ...pm.map((n) => `PM_FEC_${String(n).padStart(2, "0")}`)];
+}

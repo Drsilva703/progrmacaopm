@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import type { Driver, Route, Shift, Trip, Vehicle } from "./schedule";
 
-export interface Data { routes: Route[]; drivers: Driver[]; vehicles: Vehicle[]; trips: Trip[]; shifts: Shift[] }
+export interface Data { routes: Route[]; drivers: Driver[]; vehicles: Vehicle[]; trips: Trip[]; shifts: Shift[]; filled?: string[] }
 const KEY = "programacao-viagens-v1";
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -48,7 +48,7 @@ function seed(): Data {
     id: uid(), date, orders: i < 2 ? [] : ["2026287", "2026288"], routeId: rt.id, vehicleId: vId(plates[i]!),
     driverId: dId(names[i]!), status: "CARREGANDO", days: rt.days, time: i < 2 ? "08:00" : i === 7 ? "07:00" : "06:00",
   }));
-  return { ...base, trips, shifts: [{ date, time: "08:00", names: "MARCOS - RONALDO" }] };
+  return { ...base, trips, shifts: [{ date, time: "08:00", names: "MARCOS - RONALDO" }], filled: [date] };
 }
 
 export function useData() {
@@ -66,4 +66,17 @@ export function useData() {
     });
   }, []);
   return { data, update };
+}
+
+/** Preenche uma data com as rotas previstas (uma única vez por data; exclusões manuais são respeitadas). */
+export function autofill(d: Data, date: string, codes: string[]): Data {
+  if (d.filled?.includes(date)) return d;
+  const add: Trip[] = [];
+  for (const code of codes) {
+    const r = d.routes.find((x) => x.code.toUpperCase() === code);
+    if (!r || d.trips.some((t) => t.date === date && t.routeId === r.id)) continue;
+    add.push({ id: uid(), date, orders: [], routeId: r.id, vehicleId: "", driverId: "", status: "PROGRAMADO", days: r.days,
+      time: code.endsWith("_SSA") ? "08:00" : "06:00" });
+  }
+  return { ...d, trips: [...d.trips, ...add], filled: [...(d.filled ?? []), date] };
 }

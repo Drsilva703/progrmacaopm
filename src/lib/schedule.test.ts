@@ -25,3 +25,15 @@ describe("schedule rules", () => {
     expect(findConflicts(c, [a]).driver).toHaveLength(0);
   });
 });
+
+import { plannedRouteCodes } from "./schedule";
+describe("rotas previstas", () => {
+  it("seg/qua/sex = 12 rotas", () => {
+    for (const d of ["2026-10-12", "2026-10-14", "2026-10-16"]) expect(plannedRouteCodes(d)).toHaveLength(12);
+  });
+  it("ter/qui/sáb = SSA + PM 04,05,06", () => {
+    for (const d of ["2026-10-13", "2026-10-15", "2026-10-17"])
+      expect(plannedRouteCodes(d)).toEqual(["PM_FEC_SSA", "CO_FEC_SSA", "PM_FEC_04", "PM_FEC_05", "PM_FEC_06"]);
+  });
+  it("domingo vazio", () => expect(plannedRouteCodes("2026-10-18")).toEqual([]));
+});
