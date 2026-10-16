@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Copy, AlertTriangle, Truck, Printer } from "lucide-react";
-import {
+import { plannedRouteCodes,
   STATUSES, addDaysISO, arrivalDate, availableFrom, findConflicts, fmtBR, fromISO, toISO, weekday,
   type Trip, type Status,
 } from "@/lib/schedule";
-import { useData, uid, type Data } from "@/lib/store";
+import { useData, uid, autofill, type Data } from "@/lib/store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
