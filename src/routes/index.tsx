@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Copy, AlertTriangle, Truck, Printer } from "lucide-react";
-import {
+import { plannedRouteCodes,
   STATUSES, addDaysISO, arrivalDate, availableFrom, findConflicts, fmtBR, fromISO, toISO, weekday,
   type Trip, type Status,
 } from "@/lib/schedule";
-import { useData, uid, type Data } from "@/lib/store";
+import { useData, uid, autofill, type Data } from "@/lib/store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -103,6 +103,7 @@ const cell = "w-full bg-transparent px-1 py-1 text-center font-semibold outline-
 function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) => Data) => void; date: string }) {
   const L = lookup(data);
   const [order] = useState(() => new Map<string, number>());
+  useEffect(() => { update((dd) => autofill(dd, date, plannedRouteCodes(date))); }, [date, update]);
   const trips = data.trips.filter((t) => t.date === date).sort((a, b) => {
     const oa = order.get(a.id), ob = order.get(b.id);
     if (oa !== undefined || ob !== undefined) return (oa ?? -1) - (ob ?? -1);
