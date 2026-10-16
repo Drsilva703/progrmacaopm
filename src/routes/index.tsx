@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Trash2, Pencil, AlertTriangle, Truck, Printer } from "lucide-react";
+import { useState } from "react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Copy, AlertTriangle, Truck, Printer } from "lucide-react";
 import {
   STATUSES, addDaysISO, arrivalDate, availableFrom, findConflicts, fmtBR, fromISO, toISO, weekday,
   type Trip, type Status,
@@ -28,14 +28,13 @@ function App() {
   const { data, update } = useData();
   const [tab, setTab] = useState<Tab>("dia");
   const [date, setDate] = useState("2026-10-16");
-  const [editing, setEditing] = useState<Trip | null>(null);
 
   if (!data) return <div className="p-10 text-muted-foreground">Carregando…</div>;
 
-  const newTrip = (d = date) => setEditing({
-    id: "", date: d, orders: [], routeId: data.routes[0]?.id ?? "", vehicleId: "", driverId: "",
-    status: "PROGRAMADO", days: data.routes[0]?.days ?? 1, time: "06:00",
-  });
+  const newTrip = () => update((d) => ({ ...d, trips: [...d.trips, {
+    id: uid(), date, orders: [], routeId: "", vehicleId: "", driverId: "", status: "PROGRAMADO", days: 1, time: "06:00",
+  }] }));
+  const goDay = () => setTab("dia");
 
   return (
     <div className="min-h-screen bg-background">
@@ -55,18 +54,14 @@ function App() {
       </header>
       <main className="mx-auto max-w-7xl px-4 py-6">
         {tab !== "cadastros" && (
-          <DateBar date={date} setDate={setDate} step={tab === "mes" ? "mes" : tab === "semana" ? 7 : 1} onAdd={() => newTrip()} />
+          <DateBar date={date} setDate={setDate} step={tab === "mes" ? "mes" : tab === "semana" ? 7 : 1} onAdd={() => { newTrip(); goDay(); }} />
         )}
-        {tab === "dia" && <DaySheet data={data} update={update} date={date} onEdit={setEditing} />}
+        {tab === "dia" && <DaySheet data={data} update={update} date={date}/>}
         {tab === "semana" && <WeekView data={data} date={date} onPick={(d) => { setDate(d); setTab("dia"); }} />}
         {tab === "mes" && <MonthView data={data} date={date} onPick={(d) => { setDate(d); setTab("dia"); }} />}
         {tab === "recursos" && <Availability data={data} date={date} />}
         {tab === "cadastros" && <Registry data={data} update={update} />}
       </main>
-      {editing && <TripForm data={data} trip={editing} onClose={() => setEditing(null)} onSave={(t) => {
-        update((d) => ({ ...d, trips: t.id ? d.trips.map((x) => (x.id === t.id ? t : x)) : [...d.trips, { ...t, id: uid() }] }));
-        setEditing(null);
-      }} />}
     </div>
   );
 }
@@ -103,15 +98,31 @@ const statusClass: Record<Status, string> = {
   CANCELADO: "bg-destructive text-destructive-foreground",
 };
 
-function DaySheet({ data, update, date, onEdit }: { data: Data; update: (f: (d: Data) => Data) => void; date: string; onEdit: (t: Trip) => void }) {
+const cell = "w-full bg-transparent px-1 py-1 text-center font-semibold outline-none focus:bg-card focus:ring-2 focus:ring-primary";
+
+function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) => Data) => void; date: string }) {
   const L = lookup(data);
-  const trips = data.trips.filter((t) => t.date === date).sort((a, b) => a.time.localeCompare(b.time) || L.route(a.routeId).localeCompare(L.route(b.routeId)));
+  const [order] = useState(() => new Map<string, number>());
+  const trips = data.trips.filter((t) => t.date === date).sort((a, b) => {
+    const oa = order.get(a.id), ob = order.get(b.id);
+    if (oa !== undefined || ob !== undefined) return (oa ?? -1) - (ob ?? -1);
+    return a.time.localeCompare(b.time) || L.route(a.routeId).localeCompare(L.route(b.routeId));
+  });
+  trips.forEach((t, i) => { if (!order.has(t.id)) order.set(t.id, order.size ? Math.max(...order.values()) + 1 : i); });
   const returning = data.trips.filter((t) => t.days > 1 && arrivalDate(t.date, t.days) === date && t.status !== "CANCELADO");
   const shift = data.shifts.find((s) => s.date === date);
   const setShift = (patch: Partial<{ time: string; names: string }>) => update((d) => {
     const cur = d.shifts.find((s) => s.date === date) ?? { date, time: "08:00", names: "" };
     return { ...d, shifts: [...d.shifts.filter((s) => s.date !== date), { ...cur, ...patch }] };
   });
+  const patch = (id: string, p: Partial<Trip>) => update((dd) => ({ ...dd, trips: dd.trips.map((x) => (x.id === id ? { ...x, ...p } : x)) }));
+  const addRows = (n: number) => update((dd) => ({
+    ...dd, trips: [...dd.trips, ...Array.from({ length: n }, (): Trip => ({
+      id: uid(), date, orders: [], routeId: "", vehicleId: "", driverId: "", status: "PROGRAMADO", days: 1, time: "06:00",
+    }))],
+  }));
+  const busyFor = (t: Trip, key: "driverId" | "vehicleId", id: string) =>
+    findConflicts({ ...t, [key]: id }, data.trips)[key === "driverId" ? "driver" : "vehicle"].length > 0;
   const [d, m] = [date.slice(8), date.slice(5, 7)];
 
   return (
@@ -121,36 +132,59 @@ function DaySheet({ data, update, date, onEdit }: { data: Data; update: (f: (d: 
           <h2 className="font-display text-xl font-bold uppercase tracking-wide">Programação de viagem para saída em {d}/{m} – {weekday(date)}</h2>
           <button onClick={() => window.print()} className="print:hidden"><Printer className="h-5 w-5" /></button>
         </div>
-        <table className="w-full min-w-[900px] text-sm">
+        <table className="w-full min-w-[1000px] text-sm">
           <thead className="bg-sheet-sub font-display uppercase">
             <tr>{["Pedido", "Rota", "Veículo", "Motorista", "Status", "Dias", "Saída", "Chegada", "Horário saída", ""].map((h) => <th key={h} className="border border-sheet/30 px-2 py-1.5">{h}</th>)}</tr>
           </thead>
           <tbody>
-            {trips.length === 0 && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">Nenhuma saída programada para este dia.</td></tr>}
+            {trips.length === 0 && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">Nenhuma saída. Clique em “+ Linha” para começar.</td></tr>}
             {trips.map((t) => {
               const c = findConflicts(t, data.trips);
               const conflict = c.driver.length > 0 || c.vehicle.length > 0;
               return (
                 <tr key={t.id} className={`${t.orders.length ? "bg-sheet-row" : "bg-card"} text-center font-semibold`}>
-                  <td className="border border-sheet/20 px-2 py-1 text-xs leading-tight">{t.orders.length ? t.orders.map((o) => <div key={o}>{o}</div>) : "-"}</td>
-                  <td className="border border-sheet/20 px-2">{L.route(t.routeId)}</td>
-                  <td className={`border border-sheet/20 px-2 ${c.vehicle.length ? "text-destructive" : ""}`}>{L.plate(t.vehicleId)}</td>
-                  <td className={`border border-sheet/20 px-2 ${c.driver.length ? "text-destructive" : ""}`}>{L.driver(t.driverId)}</td>
+                  <td className="border border-sheet/20 p-0">
+                    <input className={cell} defaultValue={t.orders.join(" ")} placeholder="-"
+                      onBlur={(e) => patch(t.id, { orders: e.target.value.split(/[,\s]+/).filter(Boolean) })} />
+                  </td>
+                  <td className="border border-sheet/20 p-0">
+                    <select className={cell} value={t.routeId} onChange={(e) => patch(t.id, { routeId: e.target.value, days: data.routes.find((r) => r.id === e.target.value)?.days ?? t.days })}>
+                      <option value="">—</option>{data.routes.map((r) => <option key={r.id} value={r.id}>{r.code}</option>)}
+                    </select>
+                  </td>
+                  <td className="border border-sheet/20 p-0">
+                    <select className={`${cell} ${c.vehicle.length ? "text-destructive" : ""}`} value={t.vehicleId} onChange={(e) => patch(t.id, { vehicleId: e.target.value })}>
+                      <option value="">—</option>
+                      {data.vehicles.map((v) => <option key={v.id} value={v.id}>{v.plate}{v.id !== t.vehicleId && busyFor(t, "vehicleId", v.id) ? " (ocupado)" : ""}</option>)}
+                    </select>
+                  </td>
+                  <td className="border border-sheet/20 p-0">
+                    <select className={`${cell} ${c.driver.length ? "text-destructive" : ""}`} value={t.driverId} onChange={(e) => patch(t.id, { driverId: e.target.value })}>
+                      <option value="">—</option>
+                      {data.drivers.map((v) => <option key={v.id} value={v.id}>{v.name}{v.id !== t.driverId && busyFor(t, "driverId", v.id) ? " (ocupado)" : ""}</option>)}
+                    </select>
+                  </td>
                   <td className="border border-sheet/20 px-1">
-                    <select value={t.status} onChange={(e) => update((dd) => ({ ...dd, trips: dd.trips.map((x) => x.id === t.id ? { ...x, status: e.target.value as Status } : x) }))}
+                    <select value={t.status} onChange={(e) => patch(t.id, { status: e.target.value as Status })}
                       className={`rounded px-1 py-0.5 text-xs font-bold ${statusClass[t.status]}`}>
                       {STATUSES.map((s) => <option key={s}>{s}</option>)}
                     </select>
                   </td>
-                  <td className="border border-sheet/20 px-2">{t.days}</td>
-                  <td className="border border-sheet/20 px-2">{fmtBR(t.date)}</td>
+                  <td className="border border-sheet/20 p-0 w-16">
+                    <input type="number" min={0} className={cell} value={t.days} onChange={(e) => patch(t.id, { days: Math.max(0, +e.target.value) })} />
+                  </td>
+                  <td className="border border-sheet/20 p-0">
+                    <input type="date" className={cell} value={t.date} onChange={(e) => e.target.value && patch(t.id, { date: e.target.value })} />
+                  </td>
                   <td className="border border-sheet/20 px-2">{fmtBR(arrivalDate(t.date, t.days))}</td>
-                  <td className="border border-sheet/20 px-2">{t.time}:00</td>
+                  <td className="border border-sheet/20 p-0">
+                    <input type="time" className={cell} value={t.time} onChange={(e) => patch(t.id, { time: e.target.value })} />
+                  </td>
                   <td className="border border-sheet/20 px-2 print:hidden">
                     <div className="flex items-center justify-center gap-2">
-                      {conflict && <span title="Conflito de motorista ou veículo"><AlertTriangle className="h-4 w-4 text-destructive" /></span>}
-                      <button onClick={() => onEdit(t)}><Pencil className="h-4 w-4" /></button>
-                      <button onClick={() => confirm("Excluir esta saída?") && update((dd) => ({ ...dd, trips: dd.trips.filter((x) => x.id !== t.id) }))}><Trash2 className="h-4 w-4" /></button>
+                      {conflict && <span title={[...c.driver.map((x) => `Motorista já em ${L.route(x.routeId)} (${fmtBR(x.date)}–${fmtBR(arrivalDate(x.date, x.days))})`), ...c.vehicle.map((x) => `Veículo já em ${L.route(x.routeId)} (${fmtBR(x.date)}–${fmtBR(arrivalDate(x.date, x.days))})`)].join("\n")}><AlertTriangle className="h-4 w-4 text-destructive" /></span>}
+                      <button title="Duplicar linha" onClick={() => update((dd) => ({ ...dd, trips: [...dd.trips, { ...t, id: uid(), driverId: "", vehicleId: "" }] }))}><Copy className="h-4 w-4" /></button>
+                      <button title="Excluir" onClick={() => confirm("Excluir esta saída?") && update((dd) => ({ ...dd, trips: dd.trips.filter((x) => x.id !== t.id) }))}><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </td>
                 </tr>
@@ -158,6 +192,10 @@ function DaySheet({ data, update, date, onEdit }: { data: Data; update: (f: (d: 
             })}
           </tbody>
         </table>
+        <div className="flex gap-2 border-t border-sheet/30 bg-card px-3 py-2 print:hidden">
+          <button onClick={() => addRows(1)} className="inline-flex items-center gap-1 rounded border border-border px-3 py-1 text-sm font-semibold hover:bg-muted"><Plus className="h-4 w-4" /> Linha</button>
+          <button onClick={() => addRows(5)} className="rounded border border-border px-3 py-1 text-sm font-semibold hover:bg-muted">+ 5 linhas</button>
+        </div>
         <div className="flex flex-wrap items-center justify-center gap-2 bg-sheet px-4 py-2 font-display text-lg font-bold uppercase text-sheet-foreground">
           Plantão {d}/{m} – {weekday(date)}
           <input value={shift?.time ?? ""} onChange={(e) => setShift({ time: e.target.value })} placeholder="08:00" className="w-16 rounded bg-sheet-foreground/10 px-1 text-center" /> Hrs –
@@ -258,51 +296,6 @@ function Availability({ data, date }: { data: Data; date: string }) {
 }
 
 const inp = "w-full rounded border border-input bg-card px-2 py-1.5 text-sm";
-
-function TripForm({ data, trip, onClose, onSave }: { data: Data; trip: Trip; onClose: () => void; onSave: (t: Trip) => void }) {
-  const [t, setT] = useState(trip);
-  const [orders, setOrders] = useState(trip.orders.join(", "));
-  const L = lookup(data);
-  const draft = { ...t, orders: orders.split(/[,\s]+/).filter(Boolean) };
-  const c = useMemo(() => findConflicts(draft, data.trips), [t, data.trips]); // eslint-disable-line react-hooks/exhaustive-deps
-  const free = (key: "driverId" | "vehicleId", id: string) => findConflicts({ ...draft, [key]: id }, data.trips)[key === "driverId" ? "driver" : "vehicle"].length === 0;
-  const set = (p: Partial<Trip>) => setT((x) => ({ ...x, ...p }));
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-md bg-background p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <h2 className="mb-4 font-display text-xl font-bold uppercase">{trip.id ? "Editar saída" : "Nova saída"}</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="col-span-2 text-xs font-semibold">Pedido(s)<input className={inp} value={orders} onChange={(e) => setOrders(e.target.value)} placeholder="2026287, 2026288" /></label>
-          <label className="text-xs font-semibold">Data de saída<input type="date" className={inp} value={t.date} onChange={(e) => set({ date: e.target.value })} /></label>
-          <label className="text-xs font-semibold">Horário<input type="time" className={inp} value={t.time} onChange={(e) => set({ time: e.target.value })} /></label>
-          <label className="text-xs font-semibold">Rota<select className={inp} value={t.routeId} onChange={(e) => set({ routeId: e.target.value, days: data.routes.find((r) => r.id === e.target.value)?.days ?? t.days })}>
-            {data.routes.map((r) => <option key={r.id} value={r.id}>{r.code}</option>)}</select></label>
-          <label className="text-xs font-semibold">Duração (dias)<input type="number" min={0} className={inp} value={t.days} onChange={(e) => set({ days: Math.max(0, +e.target.value) })} /></label>
-          <label className="text-xs font-semibold">Motorista<select className={inp} value={t.driverId} onChange={(e) => set({ driverId: e.target.value })}>
-            <option value="">—</option>{data.drivers.map((d) => <option key={d.id} value={d.id}>{d.name}{free("driverId", d.id) ? "" : " (ocupado)"}</option>)}</select></label>
-          <label className="text-xs font-semibold">Veículo<select className={inp} value={t.vehicleId} onChange={(e) => set({ vehicleId: e.target.value })}>
-            <option value="">—</option>{data.vehicles.map((v) => <option key={v.id} value={v.id}>{v.plate}{free("vehicleId", v.id) ? "" : " (ocupado)"}</option>)}</select></label>
-          <label className="text-xs font-semibold">Status<select className={inp} value={t.status} onChange={(e) => set({ status: e.target.value as Status })}>{STATUSES.map((s) => <option key={s}>{s}</option>)}</select></label>
-          <div className="text-xs font-semibold">Chegada calculada<div className="py-1.5 text-base">{fmtBR(arrivalDate(t.date, t.days))} ({weekday(arrivalDate(t.date, t.days)).toLowerCase()})</div></div>
-        </div>
-        {(c.driver.length > 0 || c.vehicle.length > 0) && (
-          <div className="mt-3 rounded border border-destructive bg-destructive/10 p-2 text-sm text-destructive">
-            <b>Conflito de programação:</b>
-            {c.driver.map((x) => <div key={"d" + x.id}>Motorista já em {L.route(x.routeId)} ({fmtBR(x.date)}–{fmtBR(arrivalDate(x.date, x.days))})</div>)}
-            {c.vehicle.map((x) => <div key={"v" + x.id}>Veículo já em {L.route(x.routeId)} ({fmtBR(x.date)}–{fmtBR(arrivalDate(x.date, x.days))})</div>)}
-          </div>
-        )}
-        <div className="mt-5 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded border border-border px-4 py-2 text-sm">Cancelar</button>
-          <button disabled={!t.routeId} onClick={() => {
-            if ((c.driver.length || c.vehicle.length) && !confirm("Há conflito de motorista/veículo. Salvar mesmo assim?")) return;
-            onSave(draft);
-          }} className="rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">Salvar</button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function Registry({ data, update }: { data: Data; update: (f: (d: Data) => Data) => void }) {
   const [route, setRoute] = useState({ code: "", days: 1 });
