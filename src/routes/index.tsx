@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Trash2, Copy, AlertTriangle, Truck, Printer } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Copy, AlertTriangle, Truck, Printer, ArrowUp, ArrowDown, Menu, Table2, CalendarDays, Calendar, Users, Settings } from "lucide-react";
 import { plannedRouteCodes,
   STATUSES, addDaysISO, arrivalDate, availableFrom, findConflicts, fmtBR, fromISO, toISO, weekday,
   type Trip, type Status,
@@ -28,6 +28,7 @@ function App() {
   const { data, update } = useData();
   const [tab, setTab] = useState<Tab>("dia");
   const [date, setDate] = useState("2026-10-16");
+  const [open, setOpen] = useState(true);
 
   if (!data) return <div className="p-10 text-muted-foreground">Carregando…</div>;
 
@@ -35,24 +36,24 @@ function App() {
     id: uid(), date, orders: [], routeId: "", vehicleId: "", driverId: "", status: "PROGRAMADO", days: 1, time: "06:00",
   }] }));
   const goDay = () => setTab("dia");
+  const icons: Record<Tab, typeof Truck> = { dia: Table2, semana: CalendarDays, mes: Calendar, recursos: Users, cadastros: Settings };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="bg-sheet text-sheet-foreground print:hidden">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-4">
-          <Truck className="h-7 w-7 text-sheet-accent" />
-          <h1 className="font-display text-2xl font-bold uppercase tracking-wide">Programação de Viagens</h1>
-          <nav className="ml-auto flex flex-wrap gap-1">
-            {TABS.map(([k, l]) => (
-              <button key={k} onClick={() => setTab(k)}
-                className={`rounded px-3 py-1.5 text-sm font-semibold uppercase tracking-wide transition ${tab === k ? "bg-sheet-accent text-sheet" : "hover:bg-sheet-foreground/10"}`}>
-                {l}
-              </button>
-            ))}
-          </nav>
+    <div className="flex min-h-screen bg-background">
+      <aside className={`sticky top-0 h-screen shrink-0 bg-sheet text-sheet-foreground transition-all print:hidden ${open ? "w-56" : "w-14"}`}>
+        <div className="flex items-center gap-2 px-3 py-4">
+          <button onClick={() => setOpen(!open)} title="Menu" className="rounded p-1 hover:bg-sheet-foreground/10"><Menu className="h-5 w-5" /></button>
+          {open && <span className="truncate font-display text-lg font-bold uppercase">Programação</span>}
         </div>
-      </header>
-      <main className="mx-auto max-w-7xl px-4 py-6">
+        <nav className="flex flex-col gap-1 px-2">
+          {TABS.map(([k, l]) => { const I = icons[k]; return (
+            <button key={k} onClick={() => setTab(k)} title={l}
+              className={`flex items-center gap-3 rounded px-2 py-2 text-left text-sm font-semibold uppercase tracking-wide transition ${tab === k ? "bg-sheet-accent text-sheet" : "hover:bg-sheet-foreground/10"}`}>
+              <I className="h-5 w-5 shrink-0" />{open && <span className="truncate">{l}</span>}
+            </button>); })}
+        </nav>
+      </aside>
+      <main className="min-w-0 flex-1 px-4 py-6">
         {tab !== "cadastros" && (
           <DateBar date={date} setDate={setDate} step={tab === "mes" ? "mes" : tab === "semana" ? 7 : 1} onAdd={() => { newTrip(); goDay(); }} />
         )}
