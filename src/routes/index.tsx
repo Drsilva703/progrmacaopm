@@ -99,11 +99,10 @@ const statusClass: Record<Status, string> = {
   CANCELADO: "bg-destructive text-destructive-foreground",
 };
 
-const cell = "w-full bg-transparent px-1 py-1 text-center font-semibold outline-none focus:bg-card focus:ring-2 focus:ring-primary";
+const cell = "w-full appearance-none bg-transparent px-1 py-1 text-center font-semibold outline-none focus:bg-card focus:ring-2 focus:ring-primary";
 
 function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) => Data) => void; date: string }) {
   const L = lookup(data);
-  const [order] = useState(() => new Map<string, number>());
   useEffect(() => { update((dd) => autofill(dd, date, plannedRouteCodes(date))); }, [date, update]);
   const trips = data.trips.filter((t) => t.date === date);
   const [sel, setSel] = useState<Set<string>>(new Set());
@@ -203,7 +202,7 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
                   </td>
                   <td className="border border-sheet/20 px-1">
                     <select value={t.status} onChange={(e) => patch(t.id, { status: e.target.value as Status })}
-                      className={`rounded px-1 py-0.5 text-xs font-bold ${statusClass[t.status]}`}>
+                      className={`appearance-none rounded px-2 py-0.5 text-center text-xs font-bold ${statusClass[t.status]}`}>
                       {STATUSES.map((s) => <option key={s}>{s}</option>)}
                     </select>
                   </td>
@@ -220,6 +219,7 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
                   <td className="border border-sheet/20 px-2 print:hidden">
                     <div className="flex items-center justify-center gap-2">
                       {conflict && <span title={[...c.driver.map((x) => `Motorista já em ${L.route(x.routeId)} (${fmtBR(x.date)}–${fmtBR(arrivalDate(x.date, x.days))})`), ...c.vehicle.map((x) => `Veículo já em ${L.route(x.routeId)} (${fmtBR(x.date)}–${fmtBR(arrivalDate(x.date, x.days))})`)].join("\n")}><AlertTriangle className="h-4 w-4 text-destructive" /></span>}
+                      <button title="Subir" disabled={i === 0} className="disabled:opacity-30" onClick={() => move(t.id, -1)}><ArrowUp className="h-4 w-4" /></button><button title="Descer" disabled={i === trips.length - 1} className="disabled:opacity-30" onClick={() => move(t.id, 1)}><ArrowDown className="h-4 w-4" /></button>
                       <button title="Duplicar linha" onClick={() => update((dd) => ({ ...dd, trips: [...dd.trips, { ...t, id: uid(), driverId: "", vehicleId: "" }] }))}><Copy className="h-4 w-4" /></button>
                       <button title="Excluir" onClick={() => confirm("Excluir esta saída?") && update((dd) => ({ ...dd, trips: dd.trips.filter((x) => x.id !== t.id) }))}><Trash2 className="h-4 w-4" /></button>
                     </div>
