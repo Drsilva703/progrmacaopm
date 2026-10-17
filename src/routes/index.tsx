@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Trash2, Copy, AlertTriangle, Truck, Printer } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Copy, AlertTriangle, Truck, Printer, ArrowUp, ArrowDown, Menu, Table2, CalendarDays, Calendar, Users, Settings } from "lucide-react";
 import { plannedRouteCodes,
   STATUSES, addDaysISO, arrivalDate, availableFrom, findConflicts, fmtBR, fromISO, toISO, weekday,
   type Trip, type Status,
@@ -28,6 +28,7 @@ function App() {
   const { data, update } = useData();
   const [tab, setTab] = useState<Tab>("dia");
   const [date, setDate] = useState("2026-10-16");
+  const [open, setOpen] = useState(true);
 
   if (!data) return <div className="p-10 text-muted-foreground">Carregando…</div>;
 
@@ -35,24 +36,24 @@ function App() {
     id: uid(), date, orders: [], routeId: "", vehicleId: "", driverId: "", status: "PROGRAMADO", days: 1, time: "06:00",
   }] }));
   const goDay = () => setTab("dia");
+  const icons: Record<Tab, typeof Truck> = { dia: Table2, semana: CalendarDays, mes: Calendar, recursos: Users, cadastros: Settings };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="bg-sheet text-sheet-foreground print:hidden">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-4">
-          <Truck className="h-7 w-7 text-sheet-accent" />
-          <h1 className="font-display text-2xl font-bold uppercase tracking-wide">Programação de Viagens</h1>
-          <nav className="ml-auto flex flex-wrap gap-1">
-            {TABS.map(([k, l]) => (
-              <button key={k} onClick={() => setTab(k)}
-                className={`rounded px-3 py-1.5 text-sm font-semibold uppercase tracking-wide transition ${tab === k ? "bg-sheet-accent text-sheet" : "hover:bg-sheet-foreground/10"}`}>
-                {l}
-              </button>
-            ))}
-          </nav>
+    <div className="flex min-h-screen bg-background">
+      <aside className={`sticky top-0 h-screen shrink-0 bg-sheet text-sheet-foreground transition-all print:hidden ${open ? "w-56" : "w-14"}`}>
+        <div className="flex items-center gap-2 px-3 py-4">
+          <button onClick={() => setOpen(!open)} title="Menu" className="rounded p-1 hover:bg-sheet-foreground/10"><Menu className="h-5 w-5" /></button>
+          {open && <span className="truncate font-display text-lg font-bold uppercase">Programação</span>}
         </div>
-      </header>
-      <main className="mx-auto max-w-7xl px-4 py-6">
+        <nav className="flex flex-col gap-1 px-2">
+          {TABS.map(([k, l]) => { const I = icons[k]; return (
+            <button key={k} onClick={() => setTab(k)} title={l}
+              className={`flex items-center gap-3 rounded px-2 py-2 text-left text-sm font-semibold uppercase tracking-wide transition ${tab === k ? "bg-sheet-accent text-sheet" : "hover:bg-sheet-foreground/10"}`}>
+              <I className="h-5 w-5 shrink-0" />{open && <span className="truncate">{l}</span>}
+            </button>); })}
+        </nav>
+      </aside>
+      <main className="min-w-0 flex-1 px-4 py-6">
         {tab !== "cadastros" && (
           <DateBar date={date} setDate={setDate} step={tab === "mes" ? "mes" : tab === "semana" ? 7 : 1} onAdd={() => { newTrip(); goDay(); }} />
         )}
@@ -98,18 +99,38 @@ const statusClass: Record<Status, string> = {
   CANCELADO: "bg-destructive text-destructive-foreground",
 };
 
-const cell = "w-full bg-transparent px-1 py-1 text-center font-semibold outline-none focus:bg-card focus:ring-2 focus:ring-primary";
+const cell = "w-full appearance-none bg-transparent px-1 py-1 text-center font-semibold outline-none focus:bg-card focus:ring-2 focus:ring-primary";
 
 function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) => Data) => void; date: string }) {
   const L = lookup(data);
-  const [order] = useState(() => new Map<string, number>());
   useEffect(() => { update((dd) => autofill(dd, date, plannedRouteCodes(date))); }, [date, update]);
-  const trips = data.trips.filter((t) => t.date === date).sort((a, b) => {
-    const oa = order.get(a.id), ob = order.get(b.id);
-    if (oa !== undefined || ob !== undefined) return (oa ?? -1) - (ob ?? -1);
-    return a.time.localeCompare(b.time) || L.route(a.routeId).localeCompare(L.route(b.routeId));
+  const trips = data.trips.filter((t) => t.date === date);
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [bulkOrder, setBulkOrder] = useState("");
+  useEffect(() => setSel(new Set()), [date]);
+  const toggle = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const allSel = trips.length > 0 && trips.every((t) => sel.has(t.id));
+  const move = (id: string, dir: -1 | 1) => update((dd) => {
+    const idx = trips.findIndex((t) => t.id === id), other = trips[idx + dir];
+    if (!other) return dd;
+    const arr = [...dd.trips];
+    const a = arr.findIndex((t) => t.id === id), b = arr.findIndex((t) => t.id === other.id);
+    [arr[a], arr[b]] = [arr[b]!, arr[a]!];
+    return { ...dd, trips: arr };
   });
-  trips.forEach((t, i) => { if (!order.has(t.id)) order.set(t.id, order.size ? Math.max(...order.values()) + 1 : i); });
+  const delSel = () => { if (sel.size && confirm(`Excluir ${sel.size} linha(s)?`)) { update((dd) => ({ ...dd, trips: dd.trips.filter((x) => !sel.has(x.id)) })); setSel(new Set()); } };
+  const applyOrder = () => { const o = bulkOrder.split(/[,\s]+/).filter(Boolean); update((dd) => ({ ...dd, trips: dd.trips.map((x) => sel.has(x.id) ? { ...x, orders: o } : x) })); };
+  const pasteOrders = (e: React.ClipboardEvent, startId: string) => {
+    const lines = e.clipboardData.getData("text").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const targets = sel.has(startId) && sel.size > 1 && lines.length === 1 ? trips.filter((t) => sel.has(t.id)) : null;
+    if (lines.length < 2 && !targets) return;
+    e.preventDefault();
+    const start = trips.findIndex((t) => t.id === startId);
+    const map = new Map<string, string[]>();
+    if (targets) targets.forEach((t) => map.set(t.id, lines[0]!.split(/[,\s]+/).filter(Boolean)));
+    else lines.forEach((l, i) => { const t = trips[start + i]; if (t) map.set(t.id, l.split(/[,\s]+/).filter(Boolean)); });
+    update((dd) => ({ ...dd, trips: dd.trips.map((x) => map.has(x.id) ? { ...x, orders: map.get(x.id)! } : x) }));
+  };
   const returning = data.trips.filter((t) => t.days > 1 && arrivalDate(t.date, t.days) === date && t.status !== "CANCELADO");
   const shift = data.shifts.find((s) => s.date === date);
   const setShift = (patch: Partial<{ time: string; names: string }>) => update((d) => {
@@ -128,6 +149,15 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
 
   return (
     <div className="space-y-6">
+      {sel.size > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary bg-card px-3 py-2 text-sm print:hidden">
+          <b>{sel.size} selecionada(s)</b>
+          <input value={bulkOrder} onChange={(e) => setBulkOrder(e.target.value)} placeholder="Nº do pedido" className="rounded border border-input bg-background px-2 py-1" />
+          <button onClick={applyOrder} className="rounded bg-primary px-3 py-1 font-semibold text-primary-foreground">Aplicar pedido</button>
+          <button onClick={delSel} className="inline-flex items-center gap-1 rounded bg-destructive px-3 py-1 font-semibold text-destructive-foreground"><Trash2 className="h-4 w-4" /> Excluir selecionadas</button>
+          <button onClick={() => setSel(new Set())} className="ml-auto text-muted-foreground hover:underline">Limpar seleção</button>
+        </div>
+      )}
       <div className="overflow-x-auto rounded-md border-2 border-sheet shadow-sm">
         <div className="flex items-center justify-between bg-sheet px-4 py-2 text-sheet-foreground">
           <h2 className="font-display text-xl font-bold uppercase tracking-wide">Programação de viagem para saída em {d}/{m} – {weekday(date)}</h2>
@@ -135,17 +165,22 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
         </div>
         <table className="w-full min-w-[1000px] text-sm">
           <thead className="bg-sheet-sub font-display uppercase">
-            <tr>{["Pedido", "Rota", "Veículo", "Motorista", "Status", "Dias", "Saída", "Chegada", "Horário saída", ""].map((h) => <th key={h} className="border border-sheet/30 px-2 py-1.5">{h}</th>)}</tr>
+            <tr>
+              <th className="w-8 border border-sheet/30 print:hidden"><input type="checkbox" checked={allSel} onChange={() => setSel(allSel ? new Set() : new Set(trips.map((t) => t.id)))} /></th>
+              {["Pedido", "Rota", "Veículo", "Motorista", "Status", "Dias", "Saída", "Chegada", "Horário saída", ""].map((h) => <th key={h} className="border border-sheet/30 px-2 py-1.5">{h}</th>)}
+            </tr>
           </thead>
           <tbody>
-            {trips.length === 0 && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">Nenhuma saída. Clique em “+ Linha” para começar.</td></tr>}
-            {trips.map((t) => {
+            {trips.length === 0 && <tr><td colSpan={11} className="p-6 text-center text-muted-foreground">Nenhuma saída. Clique em “+ Linha” para começar.</td></tr>}
+            {trips.map((t, i) => {
               const c = findConflicts(t, data.trips);
               const conflict = c.driver.length > 0 || c.vehicle.length > 0;
               return (
-                <tr key={t.id} className={`${t.orders.length ? "bg-sheet-row" : "bg-card"} text-center font-semibold`}>
+                <tr key={t.id} className={`${sel.has(t.id) ? "bg-primary/20" : t.orders.length ? "bg-sheet-row" : "bg-card"} text-center font-semibold`}>
+                  <td className="border border-sheet/20 print:hidden"><input type="checkbox" checked={sel.has(t.id)} onChange={() => toggle(t.id)} /></td>
                   <td className="border border-sheet/20 p-0">
-                    <input className={cell} defaultValue={t.orders.join(" ")} placeholder="-"
+                    <input key={t.orders.join(" ")} className={cell} defaultValue={t.orders.join(" ")} placeholder="-"
+                      onPaste={(e) => pasteOrders(e, t.id)}
                       onBlur={(e) => patch(t.id, { orders: e.target.value.split(/[,\s]+/).filter(Boolean) })} />
                   </td>
                   <td className="border border-sheet/20 p-0">
@@ -167,7 +202,7 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
                   </td>
                   <td className="border border-sheet/20 px-1">
                     <select value={t.status} onChange={(e) => patch(t.id, { status: e.target.value as Status })}
-                      className={`rounded px-1 py-0.5 text-xs font-bold ${statusClass[t.status]}`}>
+                      className={`appearance-none rounded px-2 py-0.5 text-center text-xs font-bold ${statusClass[t.status]}`}>
                       {STATUSES.map((s) => <option key={s}>{s}</option>)}
                     </select>
                   </td>
@@ -184,6 +219,7 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
                   <td className="border border-sheet/20 px-2 print:hidden">
                     <div className="flex items-center justify-center gap-2">
                       {conflict && <span title={[...c.driver.map((x) => `Motorista já em ${L.route(x.routeId)} (${fmtBR(x.date)}–${fmtBR(arrivalDate(x.date, x.days))})`), ...c.vehicle.map((x) => `Veículo já em ${L.route(x.routeId)} (${fmtBR(x.date)}–${fmtBR(arrivalDate(x.date, x.days))})`)].join("\n")}><AlertTriangle className="h-4 w-4 text-destructive" /></span>}
+                      <button title="Subir" disabled={i === 0} className="disabled:opacity-30" onClick={() => move(t.id, -1)}><ArrowUp className="h-4 w-4" /></button><button title="Descer" disabled={i === trips.length - 1} className="disabled:opacity-30" onClick={() => move(t.id, 1)}><ArrowDown className="h-4 w-4" /></button>
                       <button title="Duplicar linha" onClick={() => update((dd) => ({ ...dd, trips: [...dd.trips, { ...t, id: uid(), driverId: "", vehicleId: "" }] }))}><Copy className="h-4 w-4" /></button>
                       <button title="Excluir" onClick={() => confirm("Excluir esta saída?") && update((dd) => ({ ...dd, trips: dd.trips.filter((x) => x.id !== t.id) }))}><Trash2 className="h-4 w-4" /></button>
                     </div>
