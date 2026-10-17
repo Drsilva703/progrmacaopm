@@ -14,7 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      shared_schedule: {
+        Row: {
+          id: string
+          payload: Json
+          revision: number
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          payload: Json
+          revision?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          payload?: Json
+          revision?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
