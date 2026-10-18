@@ -1,5 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { Driver, Route, Shift, Trip, Vehicle } from "./schedule";
+import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
+import { saveChange, type Change, type Snapshot, type ScheduleTransport } from './cloud-sync';
 
 export interface Data { routes: Route[]; drivers: Driver[]; vehicles: Vehicle[]; trips: Trip[]; shifts: Shift[]; filled?: string[] }
 const KEY = "programacao-viagens-v1";
@@ -33,39 +36,127 @@ export function withFleet(d: Data): Data {
   return { ...d, drivers, vehicles };
 }
 
-function seed(): Data {
-  const r = (code: string, days: number): Route => ({ id: uid(), code, days });
-  const routes = [r("PM_FEC_SSA", 0), r("CO_FEC_SSA", 0), r("PM_FEC_01", 3), r("PM_FEC_02", 2), r("PM_FEC_03", 2),
-    r("PM_FEC_04", 3), r("PM_FEC_05", 0), r("PM_FEC_06", 0), r("PM_FEC_07", 5), r("PM_FEC_08", 2), r("PM_FEC_09", 3), r("PM_FEC_10", 2)];
-  const names = ["PAULO HENRIQUE TOSTA", "TIAGO BULHOSA", "EDMILSON SANTOS DA SILVA", "JARBAS MATOS DA SILVA", "HIPOLITO PEREIRA", "ALEX CERQUEIRA BISPO",
-    "CRISTIANO SOUZA", "NEIDSON BASTOS", "LEANDRO DE JESUS ALMEIDA", "LUCIANO AMERICO", "LELIVALDO DA SILVA", "ANTONIO RANULFO NETO"];
-  const plates = ["OWC9532", "FCB4403", "QGF6164", "QGO5953", "AUD4427", "RGL6A47", "QGK9G08", "QGB3659", "TSX6J35", "AQT2B77", "QGM5987", "QGM7787"];
-  const base = withFleet({ routes, drivers: [], vehicles: [], trips: [], shifts: [] });
-  const dId = (n: string) => base.drivers.find((x) => x.name === n)!.id;
-  const vId = (p: string) => base.vehicles.find((x) => x.plate === p)!.id;
-  const date = "2026-10-16";
-  const trips: Trip[] = routes.map((rt, i) => ({
-    id: uid(), date, orders: i < 2 ? [] : ["2026287", "2026288"], routeId: rt.id, vehicleId: vId(plates[i]!),
-    driverId: dId(names[i]!), status: "CARREGANDO", days: rt.days, time: i < 2 ? "08:00" : i === 7 ? "07:00" : "06:00",
-  }));
-  return { ...base, trips, shifts: [{ date, time: "08:00", names: "MARCOS - RONALDO" }], filled: [date] };
+function decode(payload: Json): Data {
+  const d = payload as unknown as Data;
+  if (!d || !['routes', 'drivers', 'vehicles', 'trips', 'shifts'].every(k => Array.isArray(d[k as keyof Data]))) {
+    throw new Error('Não foi possível ler a programação.');
+  }
+  return d;
 }
+
+const transport: ScheduleTransport = {
+  async read() {
+    const { data, error } = await supabase.from('shared_schedule').select('payload,revision').eq('id', 'main').single();
+    if (error) throw error;
+    return { payload: decode(data.payload), revision: data.revision };
+  },
+  async compareAndSave(next, revision) {
+    const { data, error } = await supabase.from('shared_schedule')
+      .update({ payload: next as unknown as Json }).eq('id', 'main').eq('revision', revision)
+      .select('payload,revision').maybeSingle();
+    if (error) throw error;
+    return data ? { payload: decode(data.payload), revision: data.revision } : null;
+  },
+};
 
 export function useData() {
   const [data, setData] = useState<Data | null>(null);
+  const [status, setStatus] = useState('Conectando à nuvem…');
+  const [error, setError] = useState('');
+  const [legacy, setLegacy] = useState<Data | null>(null);
+  const latest = useRef<Snapshot | null>(null);
+  const visible = useRef<Data | null>(null);
+  const queue = useRef<Change[]>([]);
+  const saving = useRef(false);
+  const alive = useRef(false);
+
+  const refresh = useCallback(async () => {
+    if (saving.current || queue.current.length) return;
+    try {
+      const snapshot = await transport.read();
+      if (!alive.current || saving.current || queue.current.length) return;
+      if (latest.current && snapshot.revision < latest.current.revision) return;
+      latest.current = snapshot;
+      visible.current = snapshot.payload;
+      setData(snapshot.payload);
+      setStatus('Salvo na nuvem');
+      setError('');
+    } catch {
+      if (alive.current) setError('Sem conexão com a nuvem. Verifique sua internet e tente novamente.');
+    }
+  }, []);
+
+  const flush = useCallback(async () => {
+    if (saving.current) return;
+    saving.current = true;
+    setError('');
+    setStatus('Salvando…');
+    try {
+      while (queue.current.length) {
+        const change = queue.current[0];
+        if (!change) break;
+        const saved = await saveChange(transport, change);
+        latest.current = saved;
+        queue.current.shift();
+        visible.current = queue.current.reduce((d, fn) => fn(d), saved.payload);
+        if (alive.current) setData(visible.current);
+      }
+      if (alive.current) setStatus('Salvo na nuvem');
+    } catch {
+      if (alive.current) {
+        setStatus('Alterações não salvas');
+        setError('Não foi possível salvar. Mantenha esta página aberta e tente novamente.');
+      }
+    } finally { saving.current = false; }
+  }, []);
+
   useEffect(() => {
-    const raw = localStorage.getItem(KEY);
-    setData(raw ? withFleet(JSON.parse(raw)) : seed());
-  }, []);
+    alive.current = true;
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw && !localStorage.getItem(`${KEY}-imported`)) setLegacy(decode(JSON.parse(raw)));
+    } catch { /* Preserve the original browser data; never import it automatically. */ }
+    void refresh();
+    const channel = supabase.channel('shared-schedule')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'shared_schedule' }, () => void refresh())
+      .subscribe();
+    const poll = window.setInterval(() => void refresh(), 5000);
+    const reconnect = () => { if (queue.current.length) void flush(); else void refresh(); };
+    const unload = (e: BeforeUnloadEvent) => { if (queue.current.length) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('online', reconnect);
+    window.addEventListener('focus', reconnect);
+    window.addEventListener('beforeunload', unload);
+    return () => {
+      alive.current = false;
+      window.clearInterval(poll);
+      window.removeEventListener('online', reconnect);
+      window.removeEventListener('focus', reconnect);
+      window.removeEventListener('beforeunload', unload);
+      void supabase.removeChannel(channel);
+    };
+  }, [refresh, flush]);
+
   const update = useCallback((fn: (d: Data) => Data) => {
-    setData((prev) => {
-      if (!prev) return prev;
-      const next = fn(prev);
-      localStorage.setItem(KEY, JSON.stringify(next));
-      return next;
+    if (!visible.current) return;
+    const next = fn(visible.current);
+    if (JSON.stringify(next) === JSON.stringify(visible.current)) return;
+    queue.current.push(fn);
+    visible.current = next;
+    setData(next);
+    void flush();
+  }, [flush]);
+
+  const importLegacy = useCallback(() => {
+    if (!legacy || !confirm(`Substituir TODA a programação compartilhada pelos dados deste navegador? ${legacy.trips.length} viagens serão importadas. Os dados atuais da nuvem serão substituídos.`)) return;
+    const expected = latest.current?.revision;
+    update(current => {
+      if (latest.current?.revision !== expected) throw new Error('A programação mudou.');
+      return legacy;
     });
-  }, []);
-  return { data, update };
+    localStorage.setItem(`${KEY}-imported`, 'true');
+    setLegacy(null);
+  }, [legacy, update]);
+  return { data, update, status, error, retry: () => queue.current.length ? void flush() : void refresh(), legacy, importLegacy };
 }
 
 /** Preenche uma data com as rotas previstas (uma única vez por data; exclusões manuais são respeitadas). */

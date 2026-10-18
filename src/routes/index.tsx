@@ -6,6 +6,7 @@ import { plannedRouteCodes,
   type Trip, type Status,
 } from "@/lib/schedule";
 import { useData, uid, autofill, type Data } from "@/lib/store";
+import { Button } from '@/components/ui/button';
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -25,12 +26,12 @@ type Tab = "dia" | "semana" | "mes" | "recursos" | "cadastros";
 const TABS: [Tab, string][] = [["dia", "Programação do dia"], ["semana", "Semana"], ["mes", "Mês"], ["recursos", "Disponibilidade"], ["cadastros", "Cadastros"]];
 
 function App() {
-  const { data, update } = useData();
+  const { data, update, status, error, retry, legacy, importLegacy } = useData();
   const [tab, setTab] = useState<Tab>("dia");
   const [date, setDate] = useState("2026-10-16");
   const [open, setOpen] = useState(true);
 
-  if (!data) return <div className="p-10 text-muted-foreground">Carregando…</div>;
+  if (!data) return <div className="p-10 text-muted-foreground">{error || 'Carregando programação…'}{error && <Button onClick={retry} className="ml-3">Tentar novamente</Button>}</div>;
 
   const newTrip = () => update((d) => ({ ...d, trips: [...d.trips, {
     id: uid(), date, orders: [], routeId: "", vehicleId: "", driverId: "", status: "PROGRAMADO", days: 1, time: "06:00",
@@ -54,6 +55,11 @@ function App() {
         </nav>
       </aside>
       <main className="min-w-0 flex-1 px-4 py-6">
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-xs print:hidden">
+          <span role="status" className={error ? 'text-destructive' : 'text-muted-foreground'}>{status}</span>
+          {error && <><span role="alert" className="text-destructive">{error}</span><Button size="sm" variant="outline" onClick={retry}>Tentar novamente</Button></>}
+          {legacy && <Button size="sm" variant="outline" onClick={importLegacy}>Importar dados deste navegador ({legacy.trips.length} viagens)</Button>}
+        </div>
         {tab !== "cadastros" && (
           <DateBar date={date} setDate={setDate} step={tab === "mes" ? "mes" : tab === "semana" ? 7 : 1} onAdd={() => { newTrip(); goDay(); }} />
         )}
@@ -115,7 +121,9 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
     if (!other) return dd;
     const arr = [...dd.trips];
     const a = arr.findIndex((t) => t.id === id), b = arr.findIndex((t) => t.id === other.id);
-    [arr[a], arr[b]] = [arr[b]!, arr[a]!];
+    const first = arr[a], second = arr[b];
+    if (!first || !second) return dd;
+    [arr[a], arr[b]] = [second, first];
     return { ...dd, trips: arr };
   });
   const delSel = () => { if (sel.size && confirm(`Excluir ${sel.size} linha(s)?`)) { update((dd) => ({ ...dd, trips: dd.trips.filter((x) => !sel.has(x.id)) })); setSel(new Set()); } };
