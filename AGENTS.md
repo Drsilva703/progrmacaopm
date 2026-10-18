@@ -8,3 +8,7 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Store the shared schedule in Cloud as one revisioned document; conditional updates and serialized operation replay prevent stale whole-document overwrites.
+- Realtime notifications plus periodic refresh keep sessions current; pending edits block refresh and unload warns before unsaved work is lost.
+- Browser-era data is imported only through an explicit whole-schedule replacement confirmation; never seed or normalize the shared dataset on page load.
