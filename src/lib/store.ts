@@ -140,7 +140,25 @@ export function useData() {
     if (!visible.current) return;
     const next = fn(visible.current);
     if (JSON.stringify(next) === JSON.stringify(visible.current)) return;
-    queue.current.push(fn);
+    // Freeze IDs allocated by UI callbacks so later queued edits still target the same rows.
+    const collections = ['routes', 'drivers', 'vehicles', 'trips'] as const;
+    const added = new Map<string, string[]>();
+    for (const key of collections) {
+      const existing = new Set(visible.current[key].map(x => x.id));
+      added.set(key, next[key].filter(x => !existing.has(x.id)).map(x => x.id));
+    }
+    queue.current.push(current => {
+      const result = fn(current);
+      for (const key of collections) {
+        const ids = added.get(key) ?? [];
+        if (!ids.length) continue;
+        const existing = new Set(current[key].map(x => x.id));
+        let index = 0;
+        const rows = result[key].map(x => existing.has(x.id) ? x : { ...x, id: ids[index++] ?? x.id });
+        Object.assign(result, { [key]: rows });
+      }
+      return result;
+    });
     visible.current = next;
     setData(next);
     void flush();
