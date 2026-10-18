@@ -146,16 +146,29 @@ export function useData() {
     void flush();
   }, [flush]);
 
-  const importLegacy = useCallback(() => {
-    if (!legacy || !confirm(`Substituir TODA a programação compartilhada pelos dados deste navegador? ${legacy.trips.length} viagens serão importadas. Os dados atuais da nuvem serão substituídos.`)) return;
-    const expected = latest.current?.revision;
-    update(current => {
-      if (latest.current?.revision !== expected) throw new Error('A programação mudou.');
-      return legacy;
-    });
-    localStorage.setItem(`${KEY}-imported`, 'true');
-    setLegacy(null);
-  }, [legacy, update]);
+  const importLegacy = useCallback(async () => {
+    if (!legacy || saving.current || queue.current.length || !latest.current) return;
+    if (!confirm(`Substituir TODA a programação compartilhada pelos dados deste navegador? ${legacy.trips.length} viagens serão importadas. Os dados atuais da nuvem serão substituídos.`)) return;
+    saving.current = true;
+    setStatus('Importando…');
+    try {
+      const saved = await transport.compareAndSave(legacy, latest.current.revision);
+      if (!saved) throw new Error('A programação foi alterada por outra pessoa. Confira antes de importar novamente.');
+      latest.current = saved;
+      visible.current = saved.payload;
+      setData(saved.payload);
+      localStorage.setItem(`${KEY}-imported`, 'true');
+      setLegacy(null);
+      setError('');
+      setStatus('Salvo na nuvem');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Não foi possível importar. Tente novamente.');
+      setStatus('Importação não concluída');
+    } finally {
+      saving.current = false;
+      if (queue.current.length) void flush();
+    }
+  }, [legacy, flush]);
   return { data, update, status, error, retry: () => queue.current.length ? void flush() : void refresh(), legacy, importLegacy };
 }
 

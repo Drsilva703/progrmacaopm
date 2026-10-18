@@ -117,7 +117,8 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
   const toggle = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const allSel = trips.length > 0 && trips.every((t) => sel.has(t.id));
   const move = (id: string, dir: -1 | 1) => update((dd) => {
-    const idx = trips.findIndex((t) => t.id === id), other = trips[idx + dir];
+    const currentTrips = dd.trips.filter(t => t.date === date);
+    const idx = currentTrips.findIndex((t) => t.id === id), other = currentTrips[idx + dir];
     if (!other) return dd;
     const arr = [...dd.trips];
     const a = arr.findIndex((t) => t.id === id), b = arr.findIndex((t) => t.id === other.id);
@@ -135,9 +136,9 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
     e.preventDefault();
     const start = trips.findIndex((t) => t.id === startId);
     const map = new Map<string, string[]>();
-    if (targets) targets.forEach((t) => map.set(t.id, lines[0]!.split(/[,\s]+/).filter(Boolean)));
+    if (targets) targets.forEach((t) => map.set(t.id, (lines[0] ?? '').split(/[,\s]+/).filter(Boolean)));
     else lines.forEach((l, i) => { const t = trips[start + i]; if (t) map.set(t.id, l.split(/[,\s]+/).filter(Boolean)); });
-    update((dd) => ({ ...dd, trips: dd.trips.map((x) => map.has(x.id) ? { ...x, orders: map.get(x.id)! } : x) }));
+    update((dd) => ({ ...dd, trips: dd.trips.map((x) => { const orders = map.get(x.id); return orders ? { ...x, orders } : x; }) }));
   };
   const returning = data.trips.filter((t) => t.days > 1 && arrivalDate(t.date, t.days) === date && t.status !== "CANCELADO");
   const shift = data.shifts.find((s) => s.date === date);
@@ -325,7 +326,7 @@ function Availability({ data, date }: { data: Data; date: string }) {
             <tr key={r.id} className="border-b border-border">
               <td className="py-1.5 font-semibold">{r.label}</td>
               <td>{t ? <span className="rounded bg-sheet-row px-2 text-xs font-bold">EM VIAGEM · {L.route(t.routeId)}</span> : <span className="rounded bg-status-done px-2 text-xs font-bold">DISPONÍVEL</span>}</td>
-              <td className="text-right text-xs text-muted-foreground">{t ? `livre em ${fmtBR(nextFree(k, r.id)!)}` : ""}</td>
+              <td className="text-right text-xs text-muted-foreground">{t ? `livre em ${fmtBR(nextFree(k, r.id) ?? date)}` : ""}</td>
             </tr>
           );
         })}
