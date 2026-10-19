@@ -158,3 +158,27 @@
     color: var(--color-foreground);
   }
 }
+
+/* Content-sized columns stay independent of the viewport and menu options. */
+.schedule-sheet {
+  table-layout: fixed;
+  --column-min: 80;
+  --column-max: 320;
+}
+.schedule-sheet input,
+.schedule-sheet select { min-width: 0; max-width: 100%; }
+.sheet-column-selection { --column-min: 32; --column-max: 32; }
+.sheet-column-orders { --column-min: 90; --column-max: 360; }
+.sheet-column-route { --column-min: 100; --column-max: 260; }
+.sheet-column-vehicle { --column-min: 90; --column-max: 180; }
+.sheet-column-driver { --column-min: 120; --column-max: 380; }
+.sheet-column-status { --column-min: 100; --column-max: 180; }
+.sheet-column-days { --column-min: 60; --column-max: 100; }
+.sheet-column-date { --column-min: 140; --column-max: 160; }
+.sheet-column-arrival { --column-min: 92; --column-max: 120; }
+.sheet-column-time { --column-min: 120; --column-max: 150; }
+.sheet-column-actions { --column-min: 136; --column-max: 136; }
+@media print {
+  .schedule-sheet .sheet-column-selection,
+  .schedule-sheet .sheet-column-actions { visibility: collapse; }
+}
