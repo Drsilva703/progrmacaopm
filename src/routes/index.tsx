@@ -7,6 +7,7 @@ import { plannedRouteCodes,
 } from "@/lib/schedule";
 import { useData, uid, autofill, type Data } from "@/lib/store";
 import { Button } from '@/components/ui/button';
+import { useSheetColumnWidths } from '@/hooks/use-sheet-column-widths';
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -108,6 +109,7 @@ const statusClass: Record<Status, string> = {
 const cell = "w-full appearance-none bg-transparent px-1 py-1 text-center font-semibold outline-none focus:bg-card focus:ring-2 focus:ring-primary";
 
 function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) => Data) => void; date: string }) {
+  const tableRef = useSheetColumnWidths();
   const L = lookup(data);
   useEffect(() => { update((dd) => autofill(dd, date, plannedRouteCodes(date))); }, [date, update]);
   const trips = data.trips.filter((t) => t.date === date);
@@ -172,10 +174,13 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
           <h2 className="font-display text-xl font-bold uppercase tracking-wide">Programação de viagem para saída em {d}/{m} – {weekday(date)}</h2>
           <button onClick={() => window.print()} className="print:hidden"><Printer className="h-5 w-5" /></button>
         </div>
-        <table className="w-full min-w-[1000px] text-sm">
+        <table ref={tableRef} className="schedule-sheet text-sm">
+          <colgroup>
+            {["selection", "orders", "route", "vehicle", "driver", "status", "days", "date", "arrival", "time", "actions"].map((column) => <col key={column} className={`sheet-column-${column}`} />)}
+          </colgroup>
           <thead className="bg-sheet-sub font-display uppercase">
             <tr>
-              <th className="w-8 border border-sheet/30 print:hidden"><input type="checkbox" checked={allSel} onChange={() => setSel(allSel ? new Set() : new Set(trips.map((t) => t.id)))} /></th>
+              <th className="border border-sheet/30 print:hidden"><input type="checkbox" checked={allSel} onChange={() => setSel(allSel ? new Set() : new Set(trips.map((t) => t.id)))} /></th>
               {["Pedido", "Rota", "Veículo", "Motorista", "Status", "Dias", "Saída", "Chegada", "Horário saída", ""].map((h) => <th key={h} className="border border-sheet/30 px-2 py-1.5">{h}</th>)}
             </tr>
           </thead>
@@ -211,11 +216,11 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
                   </td>
                   <td className="border border-sheet/20 px-1">
                     <select value={t.status} onChange={(e) => patch(t.id, { status: e.target.value as Status })}
-                      className={`appearance-none rounded px-2 py-0.5 text-center text-xs font-bold ${statusClass[t.status]}`}>
+                      className={`w-full min-w-0 appearance-none rounded px-2 py-0.5 text-center text-xs font-bold ${statusClass[t.status]}`}>
                       {STATUSES.map((s) => <option key={s}>{s}</option>)}
                     </select>
                   </td>
-                  <td className="border border-sheet/20 p-0 w-16">
+                  <td className="border border-sheet/20 p-0">
                     <input type="number" min={0} className={cell} value={t.days} onChange={(e) => patch(t.id, { days: Math.max(0, +e.target.value) })} />
                   </td>
                   <td className="border border-sheet/20 p-0">

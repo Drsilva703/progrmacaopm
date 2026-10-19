@@ -12,3 +12,4 @@
 - Store the shared schedule in Cloud as one revisioned document; conditional updates and serialized operation replay prevent stale whole-document overwrites.
 - Realtime notifications plus periodic refresh keep sessions current; pending edits block refresh and unload warns before unsaved work is lost.
 - Browser-era data is imported only through an explicit whole-schedule replacement confirmation; never seed or normalize the shared dataset on page load.
+- Size daily-sheet columns from rendered cell values and loaded fonts within CSS-defined per-column bounds; keep measurement browser-only and independent of schedule persistence.
