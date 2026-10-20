@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import type { Driver, Route, Shift, Trip, Vehicle } from "./schedule";
+import type { Driver, Route, Shift, Trip, Vehicle, Unavailability } from "./schedule";
 import { supabase } from '@/integrations/supabase/client';
 import type { Json } from '@/integrations/supabase/types';
 import { saveChange, type Change, type Snapshot, type ScheduleTransport } from './cloud-sync';
 
-export interface Data { routes: Route[]; drivers: Driver[]; vehicles: Vehicle[]; trips: Trip[]; shifts: Shift[]; filled?: string[] }
+export interface Data { routes: Route[]; drivers: Driver[]; vehicles: Vehicle[]; trips: Trip[]; shifts: Shift[]; filled?: string[]; unavailabilities?: Unavailability[] }
 const KEY = "programacao-viagens-v1";
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
