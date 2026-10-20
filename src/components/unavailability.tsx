@@ -25,18 +25,18 @@ export function UnavailabilityView({ data, update, date }: Props) {
     <h2 className="font-display text-2xl font-bold uppercase">Indisponibilidades</h2>
     <form onSubmit={submit} className="grid items-end gap-3 border-b border-border pb-5 sm:grid-cols-2 xl:grid-cols-6">
       <label className="space-y-1 text-sm font-semibold">Recurso
-        <select className={field} value={draft.resourceType} onChange={e => { const vehicle = e.target.value === "vehicle"; setDraft({ ...draft, resourceType: vehicle ? "vehicle" : "driver", resourceId: "", reason: vehicle ? "OFICINA" : "FOLGA" }); }}>
+        <select aria-label="Recurso" className={field} value={draft.resourceType} onChange={e => { const vehicle = e.target.value === "vehicle"; setDraft({ ...draft, resourceType: vehicle ? "vehicle" : "driver", resourceId: "", reason: vehicle ? "OFICINA" : "FOLGA" }); }}>
           <option value="driver">Motorista</option><option value="vehicle">Veículo</option>
         </select>
       </label>
       <label className="space-y-1 text-sm font-semibold">{draft.resourceType === "driver" ? "Motorista" : "Placa"}
-        <select required className={field} value={draft.resourceId} onChange={e => setDraft({ ...draft, resourceId: e.target.value })}>
+        <select aria-label={draft.resourceType === "driver" ? "Motorista" : "Placa"} required className={field} value={draft.resourceId} onChange={e => setDraft({ ...draft, resourceId: e.target.value })}>
           <option value="">Selecionar</option>
           {draft.resourceType === "driver" ? data.drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>) : data.vehicles.map(v => <option key={v.id} value={v.id}>{v.plate}</option>)}
         </select>
       </label>
       <label className="space-y-1 text-sm font-semibold">Motivo
-        <select className={field} value={draft.reason} onChange={e => setDraft({ ...draft, reason: e.target.value as Unavailability["reason"] })}>
+        <select aria-label="Motivo" className={field} value={draft.reason} onChange={e => setDraft({ ...draft, reason: e.target.value as Unavailability["reason"] })}>
           {draft.resourceType === "vehicle" ? <option value="OFICINA">OFICINA</option> : <><option value="FOLGA">FOLGA</option><option value="ATESTADO">ATESTADO</option></>}
         </select>
       </label>
