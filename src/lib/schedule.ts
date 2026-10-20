@@ -17,6 +17,32 @@ export interface Trip {
 }
 export interface Shift { date: string; time: string; names: string }
 
+export type UnavailabilityReason = "OFICINA" | "FOLGA" | "ATESTADO";
+export interface Unavailability {
+  id: string;
+  resourceType: "driver" | "vehicle";
+  resourceId: string;
+  reason: UnavailabilityReason;
+  startDate: string;
+  endDate: string;
+  notes: string;
+}
+
+/** Both ends are inclusive; a trip must be free throughout its entire period. */
+export function resourceBlocks(blocks: Unavailability[] | undefined, type: Unavailability["resourceType"], id: string, start: string, end = start) {
+  if (!id) return [];
+  return (blocks ?? []).filter(b => b.resourceType === type && b.resourceId === id && b.startDate <= end && start <= b.endDate);
+}
+
+export function tripBlocks(trip: Trip, blocks: Unavailability[] | undefined) {
+  if (trip.status === "CANCELADO") return { driver: [], vehicle: [] };
+  const end = arrivalDate(trip.date, trip.days);
+  return {
+    driver: resourceBlocks(blocks, "driver", trip.driverId, trip.date, end),
+    vehicle: resourceBlocks(blocks, "vehicle", trip.vehicleId, trip.date, end),
+  };
+}
+
 const pad = (n: number) => String(n).padStart(2, "0");
 export const toISO = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 export const fromISO = (s: string) => {

@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Trash2, Copy, AlertTriangle, Truck, Printer, ArrowUp, ArrowDown, Menu, Table2, CalendarDays, Calendar, Users, Settings } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Copy, AlertTriangle, Truck, Printer, ArrowUp, ArrowDown, Menu, Table2, CalendarDays, Calendar, Users, Settings, Wrench } from "lucide-react";
 import { plannedRouteCodes,
-  STATUSES, addDaysISO, arrivalDate, availableFrom, findConflicts, fmtBR, fromISO, toISO, weekday,
+  STATUSES, addDaysISO, arrivalDate, availableFrom, findConflicts, fmtBR, fromISO, toISO, weekday, resourceBlocks, tripBlocks,
   type Trip, type Status,
 } from "@/lib/schedule";
 import { useData, uid, autofill, type Data } from "@/lib/store";
 import { Button } from '@/components/ui/button';
 import { useSheetColumnWidths } from '@/hooks/use-sheet-column-widths';
+import { UnavailabilityView } from '@/components/unavailability';
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -23,8 +24,8 @@ export const Route = createFileRoute("/")({
   component: App,
 });
 
-type Tab = "dia" | "semana" | "mes" | "recursos" | "cadastros";
-const TABS: [Tab, string][] = [["dia", "Programação do dia"], ["semana", "Semana"], ["mes", "Mês"], ["recursos", "Disponibilidade"], ["cadastros", "Cadastros"]];
+type Tab = "dia" | "semana" | "mes" | "recursos" | "cadastros" | "bloqueios";
+const TABS: [Tab, string][] = [["dia", "Programação do dia"], ["semana", "Semana"], ["mes", "Mês"], ["recursos", "Disponibilidade"], ["bloqueios", "Indisponibilidades"], ["cadastros", "Cadastros"]];
 
 function App() {
   const { data, update, status, error, retry, legacy, importLegacy } = useData();
@@ -38,7 +39,7 @@ function App() {
     id: uid(), date, orders: [], routeId: "", vehicleId: "", driverId: "", status: "PROGRAMADO", days: 1, time: "06:00",
   }] }));
   const goDay = () => setTab("dia");
-  const icons: Record<Tab, typeof Truck> = { dia: Table2, semana: CalendarDays, mes: Calendar, recursos: Users, cadastros: Settings };
+  const icons: Record<Tab, typeof Truck> = { dia: Table2, semana: CalendarDays, mes: Calendar, recursos: Users, cadastros: Settings, bloqueios: Wrench };
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -49,10 +50,10 @@ function App() {
         </div>
         <nav className="flex flex-col gap-1 px-2">
           {TABS.map(([k, l]) => { const I = icons[k]; return (
-            <button key={k} onClick={() => setTab(k)} title={l}
+            <Button variant="ghost" key={k} onClick={() => setTab(k)} title={l}
               className={`flex items-center gap-3 rounded px-2 py-2 text-left text-sm font-semibold uppercase tracking-wide transition ${tab === k ? "bg-sheet-accent text-sheet" : "hover:bg-sheet-foreground/10"}`}>
               <I className="h-5 w-5 shrink-0" />{open && <span className="truncate">{l}</span>}
-            </button>); })}
+            </Button>); })}
         </nav>
       </aside>
       <main className="min-w-0 flex-1 px-4 py-6">
@@ -61,7 +62,7 @@ function App() {
           {error && <><span role="alert" className="text-destructive">{error}</span><Button size="sm" variant="outline" onClick={retry}>Tentar novamente</Button></>}
           {legacy && <Button size="sm" variant="outline" onClick={importLegacy}>Importar dados deste navegador ({legacy.trips.length} viagens)</Button>}
         </div>
-        {tab !== "cadastros" && (
+        {tab !== "cadastros" && tab !== "bloqueios" && (
           <DateBar date={date} setDate={setDate} step={tab === "mes" ? "mes" : tab === "semana" ? 7 : 1} onAdd={() => { newTrip(); goDay(); }} />
         )}
         {tab === "dia" && <DaySheet data={data} update={update} date={date}/>}
@@ -69,6 +70,7 @@ function App() {
         {tab === "mes" && <MonthView data={data} date={date} onPick={(d) => { setDate(d); setTab("dia"); }} />}
         {tab === "recursos" && <Availability data={data} date={date} />}
         {tab === "cadastros" && <Registry data={data} update={update} />}
+        {tab === "bloqueios" && <UnavailabilityView data={data} update={update} date={date} />}
       </main>
     </div>
   );
@@ -148,7 +150,22 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
     const cur = d.shifts.find((s) => s.date === date) ?? { date, time: "08:00", names: "" };
     return { ...d, shifts: [...d.shifts.filter((s) => s.date !== date), { ...cur, ...patch }] };
   });
-  const patch = (id: string, p: Partial<Trip>) => update((dd) => ({ ...dd, trips: dd.trips.map((x) => (x.id === id ? { ...x, ...p } : x)) }));
+  const patch = (id: string, p: Partial<Trip>) => {
+    const current = data.trips.find(t => t.id === id);
+    if (!current) return;
+    const next = { ...current, ...p };
+    const before = tripBlocks(current, data.unavailabilities);
+    const after = tripBlocks(next, data.unavailabilities);
+    // Allow clearing an assignment and unrelated edits to an already affected trip.
+    const introduces = (p.driverId !== undefined && p.driverId !== current.driverId && after.driver.length > 0)
+      || (p.vehicleId !== undefined && p.vehicleId !== current.vehicleId && after.vehicle.length > 0)
+      || ((p.date !== undefined || p.days !== undefined || p.status !== undefined) && [...after.driver, ...after.vehicle].some(b => ![...before.driver, ...before.vehicle].some(old => old.id === b.id)));
+    if (introduces) {
+      alert(`Não é possível escalar neste período:\n${[...after.driver.map(b => `${L.driver(next.driverId)} (${b.reason}) até ${fmtBR(b.endDate)}`), ...after.vehicle.map(b => `${L.plate(next.vehicleId)} (${b.reason}) até ${fmtBR(b.endDate)}`)].join("\n")}`);
+      return;
+    }
+    update((dd) => ({ ...dd, trips: dd.trips.map((x) => (x.id === id ? { ...x, ...p } : x)) }));
+  };
   const addRows = (n: number) => update((dd) => ({
     ...dd, trips: [...dd.trips, ...Array.from({ length: n }, (): Trip => ({
       id: uid(), date, orders: [], routeId: "", vehicleId: "", driverId: "", status: "PROGRAMADO", days: 1, time: "06:00",
@@ -174,6 +191,7 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
           <h2 className="font-display text-xl font-bold uppercase tracking-wide">Programação de viagem para saída em {d}/{m} – {weekday(date)}</h2>
           <button onClick={() => window.print()} className="print:hidden"><Printer className="h-5 w-5" /></button>
         </div>
+        {trips.some(t => { const b = tripBlocks(t, data.unavailabilities); return b.driver.length + b.vehicle.length > 0; }) && <p role="alert" className="flex items-center gap-2 border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-sm font-semibold text-destructive"><AlertTriangle className="h-4 w-4 shrink-0" />Há viagens com motorista afastado ou veículo na oficina. Revise as células em vermelho.</p>}
         <table ref={tableRef} className="schedule-sheet text-sm">
           <colgroup>
             {["selection", "orders", "route", "vehicle", "driver", "status", "days", "date", "arrival", "time", "actions"].map((column) => <col key={column} className={`sheet-column-${column}`} />)}
@@ -188,7 +206,8 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
             {trips.length === 0 && <tr><td colSpan={11} className="p-6 text-center text-muted-foreground">Nenhuma saída. Clique em “+ Linha” para começar.</td></tr>}
             {trips.map((t, i) => {
               const c = findConflicts(t, data.trips);
-              const conflict = c.driver.length > 0 || c.vehicle.length > 0;
+              const b = tripBlocks(t, data.unavailabilities);
+              const conflict = c.driver.length > 0 || c.vehicle.length > 0 || b.driver.length > 0 || b.vehicle.length > 0;
               return (
                 <tr key={t.id} className={`${sel.has(t.id) ? "bg-primary/20" : t.orders.length ? "bg-sheet-row" : "bg-card"} text-center font-semibold`}>
                   <td className="border border-sheet/20 print:hidden"><input type="checkbox" checked={sel.has(t.id)} onChange={() => toggle(t.id)} /></td>
@@ -203,15 +222,15 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
                     </select>
                   </td>
                   <td className="border border-sheet/20 p-0">
-                    <select className={`${cell} ${c.vehicle.length ? "text-destructive" : ""}`} value={t.vehicleId} onChange={(e) => patch(t.id, { vehicleId: e.target.value })}>
+                    <select aria-label={`Veículo da linha ${i + 1}`} className={`${cell} ${c.vehicle.length || b.vehicle.length ? "text-destructive" : ""}`} value={t.vehicleId} onChange={(e) => patch(t.id, { vehicleId: e.target.value })}>
                       <option value="">—</option>
-                      {data.vehicles.map((v) => <option key={v.id} value={v.id}>{v.plate}{v.id !== t.vehicleId && busyFor(t, "vehicleId", v.id) ? " (ocupado)" : ""}</option>)}
+                      {data.vehicles.map((v) => { const blocks = resourceBlocks(data.unavailabilities, "vehicle", v.id, t.date, arrivalDate(t.date, t.days)); return <option className={blocks.length ? "text-destructive" : ""} key={v.id} value={v.id}>{v.plate}{blocks.length ? ` (${[...new Set(blocks.map(b => b.reason))].join(" / ")})` : v.id !== t.vehicleId && busyFor(t, "vehicleId", v.id) ? " (ocupado)" : ""}</option>; })}
                     </select>
                   </td>
                   <td className="border border-sheet/20 p-0">
-                    <select className={`${cell} ${c.driver.length ? "text-destructive" : ""}`} value={t.driverId} onChange={(e) => patch(t.id, { driverId: e.target.value })}>
+                    <select aria-label={`Motorista da linha ${i + 1}`} className={`${cell} ${c.driver.length || b.driver.length ? "text-destructive" : ""}`} value={t.driverId} onChange={(e) => patch(t.id, { driverId: e.target.value })}>
                       <option value="">—</option>
-                      {data.drivers.map((v) => <option key={v.id} value={v.id}>{v.name}{v.id !== t.driverId && busyFor(t, "driverId", v.id) ? " (ocupado)" : ""}</option>)}
+                      {data.drivers.map((v) => { const blocks = resourceBlocks(data.unavailabilities, "driver", v.id, t.date, arrivalDate(t.date, t.days)); return <option className={blocks.length ? "text-destructive" : ""} key={v.id} value={v.id}>{v.name}{blocks.length ? ` (${[...new Set(blocks.map(b => b.reason))].join(" / ")})` : v.id !== t.driverId && busyFor(t, "driverId", v.id) ? " (ocupado)" : ""}</option>; })}
                     </select>
                   </td>
                   <td className="border border-sheet/20 px-1">
@@ -232,7 +251,7 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
                   </td>
                   <td className="border border-sheet/20 px-2 print:hidden">
                     <div className="flex items-center justify-center gap-2">
-                      {conflict && <span title={[...c.driver.map((x) => `Motorista já em ${L.route(x.routeId)} (${fmtBR(x.date)}–${fmtBR(arrivalDate(x.date, x.days))})`), ...c.vehicle.map((x) => `Veículo já em ${L.route(x.routeId)} (${fmtBR(x.date)}–${fmtBR(arrivalDate(x.date, x.days))})`)].join("\n")}><AlertTriangle className="h-4 w-4 text-destructive" /></span>}
+                      {conflict && <span title={[...b.driver.map(x => `Motorista (${x.reason}) até ${fmtBR(x.endDate)}`), ...b.vehicle.map(x => `Veículo (${x.reason}) até ${fmtBR(x.endDate)}`), ...c.driver.map((x) => `Motorista já em ${L.route(x.routeId)} (${fmtBR(x.date)}–${fmtBR(arrivalDate(x.date, x.days))})`), ...c.vehicle.map((x) => `Veículo já em ${L.route(x.routeId)} (${fmtBR(x.date)}–${fmtBR(arrivalDate(x.date, x.days))})`)].join("\n")}><AlertTriangle className="h-4 w-4 text-destructive" /></span>}
                       <button title="Subir" disabled={i === 0} className="disabled:opacity-30" onClick={() => move(t.id, -1)}><ArrowUp className="h-4 w-4" /></button><button title="Descer" disabled={i === trips.length - 1} className="disabled:opacity-30" onClick={() => move(t.id, 1)}><ArrowDown className="h-4 w-4" /></button>
                       <button title="Duplicar linha" onClick={() => update((dd) => ({ ...dd, trips: [...dd.trips, { ...t, id: uid(), driverId: "", vehicleId: "" }] }))}><Copy className="h-4 w-4" /></button>
                       <button title="Excluir" onClick={() => confirm("Excluir esta saída?") && update((dd) => ({ ...dd, trips: dd.trips.filter((x) => x.id !== t.id) }))}><Trash2 className="h-4 w-4" /></button>
@@ -327,11 +346,12 @@ function Availability({ data, date }: { data: Data; date: string }) {
       <tbody>
         {rows.map((r) => {
           const t = busy(k, r.id);
+          const blocks = resourceBlocks(data.unavailabilities, k === "driverId" ? "driver" : "vehicle", r.id, date);
           return (
             <tr key={r.id} className="border-b border-border">
               <td className="py-1.5 font-semibold">{r.label}</td>
-              <td>{t ? <span className="rounded bg-sheet-row px-2 text-xs font-bold">EM VIAGEM · {L.route(t.routeId)}</span> : <span className="rounded bg-status-done px-2 text-xs font-bold">DISPONÍVEL</span>}</td>
-              <td className="text-right text-xs text-muted-foreground">{t ? `livre em ${fmtBR(nextFree(k, r.id) ?? date)}` : ""}</td>
+              <td>{blocks.length ? <span className="text-xs font-bold text-destructive">{[...new Set(blocks.map(b => b.reason))].join(" / ")}{t ? ` · EM VIAGEM (${L.route(t.routeId)})` : ""}</span> : t ? <span className="rounded bg-sheet-row px-2 text-xs font-bold">EM VIAGEM · {L.route(t.routeId)}</span> : <span className="rounded bg-status-done px-2 text-xs font-bold">DISPONÍVEL</span>}</td>
+              <td className="text-right text-xs text-muted-foreground">{blocks.length ? `até ${fmtBR(blocks.reduce((end, b) => b.endDate > end ? b.endDate : end, date))}` : t ? `livre em ${fmtBR(nextFree(k, r.id) ?? date)}` : ""}</td>
             </tr>
           );
         })}
@@ -352,9 +372,9 @@ function Registry({ data, update }: { data: Data; update: (f: (d: Data) => Data)
   const [route, setRoute] = useState({ code: "", days: 1 });
   const [driver, setDriver] = useState("");
   const [plate, setPlate] = useState("");
-  const used = (k: "routeId" | "driverId" | "vehicleId", id: string) => data.trips.some((t) => t[k] === id);
+  const used = (k: "routeId" | "driverId" | "vehicleId", id: string) => data.trips.some((t) => t[k] === id) || (k !== "routeId" && (data.unavailabilities ?? []).some(b => b.resourceType === (k === "driverId" ? "driver" : "vehicle") && b.resourceId === id));
   const del = (k: "routes" | "drivers" | "vehicles", tk: "routeId" | "driverId" | "vehicleId", id: string) => {
-    if (used(tk, id)) return alert("Item usado em viagens programadas.");
+    if (used(tk, id)) return alert("Item usado em viagens ou indisponibilidades registradas.");
     update((d) => ({ ...d, [k]: (d[k] as { id: string }[]).filter((x) => x.id !== id) }));
   };
   const Row = ({ label, onDel }: { label: string; onDel: () => void }) => (
