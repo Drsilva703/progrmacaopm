@@ -13,3 +13,4 @@
 - Realtime notifications plus periodic refresh keep sessions current; pending edits block refresh and unload warns before unsaved work is lost.
 - Browser-era data is imported only through an explicit whole-schedule replacement confirmation; never seed or normalize the shared dataset on page load.
 - Size daily-sheet columns from rendered cell values and loaded fonts within CSS-defined per-column bounds; keep measurement browser-only and independent of schedule persistence.
+- Store resource unavailabilities as an optional collection in the revisioned schedule document; share inclusive interval matching across the daily sheet, availability view and management screen to keep old schedules compatible without page-load normalization.
