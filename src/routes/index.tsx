@@ -187,18 +187,23 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
         </div>
       )}
       <div className="overflow-x-auto rounded-md border-2 border-sheet shadow-sm">
-        <div className="flex items-center justify-between bg-sheet px-4 py-2 text-sheet-foreground">
-          <h2 className="font-display text-xl font-bold uppercase tracking-wide">Programação de viagem para saída em {d}/{m} – {weekday(date)}</h2>
-          <button onClick={() => window.print()} className="print:hidden"><Printer className="h-5 w-5" /></button>
-        </div>
         {trips.some(t => { const b = tripBlocks(t, data.unavailabilities); return b.driver.length + b.vehicle.length > 0; }) && <p role="alert" className="flex items-center gap-2 border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-sm font-semibold text-destructive"><AlertTriangle className="h-4 w-4 shrink-0" />Há viagens com motorista afastado ou veículo na oficina. Revise as células em vermelho.</p>}
         <table ref={tableRef} className="schedule-sheet text-sm">
           <colgroup>
             {["selection", "orders", "route", "vehicle", "driver", "status", "days", "date", "arrival", "time", "actions"].map((column) => <col key={column} className={`sheet-column-${column}`} />)}
           </colgroup>
           <thead className="bg-sheet-sub font-display uppercase">
+            <tr className="bg-sheet text-sheet-foreground">
+              <th className="border border-sheet/30 p-0" />
+              <th colSpan={9} className="border border-sheet/30 px-4 py-2 text-center">
+                <h2 className="font-display text-xl font-bold uppercase tracking-wide">Programação de viagem para saída em {d}/{m} – {weekday(date)}</h2>
+              </th>
+              <th className="border border-sheet/30 p-1 text-right">
+                <button onClick={() => window.print()} className="print:hidden"><Printer className="h-5 w-5" /></button>
+              </th>
+            </tr>
             <tr>
-              <th className="border border-sheet/30 print:hidden"><input type="checkbox" checked={allSel} onChange={() => setSel(allSel ? new Set() : new Set(trips.map((t) => t.id)))} /></th>
+              <th className="border border-sheet/30"><input type="checkbox" className="print:hidden" checked={allSel} onChange={() => setSel(allSel ? new Set() : new Set(trips.map((t) => t.id)))} /></th>
               {["Pedido", "Rota", "Veículo", "Motorista", "Status", "Dias", "Saída", "Chegada", "Horário saída", ""].map((h) => <th key={h} className="border border-sheet/30 px-2 py-1.5">{h}</th>)}
             </tr>
           </thead>
@@ -210,7 +215,7 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
               const conflict = c.driver.length > 0 || c.vehicle.length > 0 || b.driver.length > 0 || b.vehicle.length > 0;
               return (
                 <tr key={t.id} className={`${sel.has(t.id) ? "bg-primary/20" : t.orders.length ? "bg-sheet-row" : "bg-card"} text-center font-semibold`}>
-                  <td className="border border-sheet/20 print:hidden"><input type="checkbox" checked={sel.has(t.id)} onChange={() => toggle(t.id)} /></td>
+                  <td className="border border-sheet/20"><input type="checkbox" className="print:hidden" checked={sel.has(t.id)} onChange={() => toggle(t.id)} /></td>
                   <td className="border border-sheet/20 p-0">
                     <input key={t.orders.join(" ")} className={cell} defaultValue={t.orders.join(" ")} placeholder="-"
                       onPaste={(e) => pasteOrders(e, t.id)}
@@ -249,8 +254,8 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
                   <td className="border border-sheet/20 p-0">
                     <input type="time" className={cell} value={t.time} onChange={(e) => patch(t.id, { time: e.target.value })} />
                   </td>
-                  <td className="border border-sheet/20 px-2 print:hidden">
-                    <div className="flex items-center justify-center gap-2">
+                  <td className="border border-sheet/20 px-2">
+                    <div className="flex items-center justify-center gap-2 print:hidden">
                       {conflict && <span title={[...b.driver.map(x => `Motorista (${x.reason}) até ${fmtBR(x.endDate)}`), ...b.vehicle.map(x => `Veículo (${x.reason}) até ${fmtBR(x.endDate)}`), ...c.driver.map((x) => `Motorista já em ${L.route(x.routeId)} (${fmtBR(x.date)}–${fmtBR(arrivalDate(x.date, x.days))})`), ...c.vehicle.map((x) => `Veículo já em ${L.route(x.routeId)} (${fmtBR(x.date)}–${fmtBR(arrivalDate(x.date, x.days))})`)].join("\n")}><AlertTriangle className="h-4 w-4 text-destructive" /></span>}
                       <button title="Subir" disabled={i === 0} className="disabled:opacity-30" onClick={() => move(t.id, -1)}><ArrowUp className="h-4 w-4" /></button><button title="Descer" disabled={i === trips.length - 1} className="disabled:opacity-30" onClick={() => move(t.id, 1)}><ArrowDown className="h-4 w-4" /></button>
                       <button title="Duplicar linha" onClick={() => update((dd) => ({ ...dd, trips: [...dd.trips, { ...t, id: uid(), driverId: "", vehicleId: "" }] }))}><Copy className="h-4 w-4" /></button>
