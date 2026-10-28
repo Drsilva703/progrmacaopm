@@ -197,6 +197,15 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
             {["selection", "orders", "route", "vehicle", "driver", "status", "days", "date", "arrival", "time", "actions"].map((column) => <col key={column} className={`sheet-column-${column}`} />)}
           </colgroup>
           <thead className="bg-sheet-sub font-display uppercase">
+            <tr className="bg-sheet text-sheet-foreground">
+              <th className="border border-sheet/30 p-0 print:hidden" />
+              <th colSpan={9} className="border border-sheet/30 px-4 py-2 text-center">
+                <h2 className="font-display text-xl font-bold uppercase tracking-wide">Programação de viagem para saída em {d}/{m} – {weekday(date)}</h2>
+              </th>
+              <th className="border border-sheet/30 p-1 text-right print:hidden">
+                <button onClick={() => window.print()} className="print:hidden"><Printer className="h-5 w-5" /></button>
+              </th>
+            </tr>
             <tr>
               <th className="border border-sheet/30 print:hidden"><input type="checkbox" checked={allSel} onChange={() => setSel(allSel ? new Set() : new Set(trips.map((t) => t.id)))} /></th>
               {["Pedido", "Rota", "Veículo", "Motorista", "Status", "Dias", "Saída", "Chegada", "Horário saída", ""].map((h) => <th key={h} className="border border-sheet/30 px-2 py-1.5">{h}</th>)}
