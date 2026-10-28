@@ -26,6 +26,8 @@ export const Route = createFileRoute("/")({
 
 type Tab = "dia" | "semana" | "mes" | "recursos" | "cadastros" | "bloqueios";
 const TABS: [Tab, string][] = [["dia", "Programação do dia"], ["semana", "Semana"], ["mes", "Mês"], ["recursos", "Disponibilidade"], ["bloqueios", "Indisponibilidades"], ["cadastros", "Cadastros"]];
+/** Última data aberta neste navegador (preferência de visualização, não faz parte da programação). */
+const LAST_DATE_KEY = "programacao-ultima-data";
 
 function App() {
   const { data, update, status, error, retry, legacy, importLegacy } = useData();
