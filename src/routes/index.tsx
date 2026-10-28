@@ -38,6 +38,11 @@ function App() {
   const newTrip = () => update((d) => ({ ...d, trips: [...d.trips, {
     id: uid(), date, orders: [], routeId: "", vehicleId: "", driverId: "", status: "PROGRAMADO", days: 1, time: "06:00",
   }] }));
+  const addRows = (n: number) => update((dd) => ({
+    ...dd, trips: [...dd.trips, ...Array.from({ length: n }, (): Trip => ({
+      id: uid(), date, orders: [], routeId: "", vehicleId: "", driverId: "", status: "PROGRAMADO", days: 1, time: "06:00",
+    }))],
+  }));
   const goDay = () => setTab("dia");
   const icons: Record<Tab, typeof Truck> = { dia: Table2, semana: CalendarDays, mes: Calendar, recursos: Users, cadastros: Settings, bloqueios: Wrench };
 
