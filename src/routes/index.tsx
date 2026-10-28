@@ -187,10 +187,6 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
         </div>
       )}
       <div className="overflow-x-auto rounded-md border-2 border-sheet shadow-sm">
-        <div className="flex items-center justify-between bg-sheet px-4 py-2 text-sheet-foreground">
-          <h2 className="font-display text-xl font-bold uppercase tracking-wide">Programação de viagem para saída em {d}/{m} – {weekday(date)}</h2>
-          <button onClick={() => window.print()} className="print:hidden"><Printer className="h-5 w-5" /></button>
-        </div>
         {trips.some(t => { const b = tripBlocks(t, data.unavailabilities); return b.driver.length + b.vehicle.length > 0; }) && <p role="alert" className="flex items-center gap-2 border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-sm font-semibold text-destructive"><AlertTriangle className="h-4 w-4 shrink-0" />Há viagens com motorista afastado ou veículo na oficina. Revise as células em vermelho.</p>}
         <table ref={tableRef} className="schedule-sheet text-sm">
           <colgroup>
