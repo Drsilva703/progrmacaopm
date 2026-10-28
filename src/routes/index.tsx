@@ -81,7 +81,7 @@ function App() {
   );
 }
 
-function DateBar({ date, setDate, step, onAdd }: { date: string; setDate: (d: string) => void; step: number | "mes"; onAdd: () => void }) {
+function DateBar({ date, setDate, step, onAdd, onAddRows }: { date: string; setDate: (d: string) => void; step: number | "mes"; onAdd: () => void; onAddRows?: (n: number) => void }) {
   const move = (dir: number) => {
     if (step === "mes") { const d = fromISO(date); d.setMonth(d.getMonth() + dir, 1); setDate(toISO(d)); }
     else setDate(addDaysISO(date, step * dir));
@@ -92,9 +92,13 @@ function DateBar({ date, setDate, step, onAdd }: { date: string; setDate: (d: st
       <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} className="rounded border border-input bg-card px-3 py-1.5" />
       <button onClick={() => move(1)} className="rounded border border-border p-2 hover:bg-muted"><ChevronRight className="h-4 w-4" /></button>
       <span className="font-display text-lg font-semibold uppercase">{weekday(date)}</span>
-      <button onClick={onAdd} className="ml-auto inline-flex items-center gap-1 rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
-        <Plus className="h-4 w-4" /> Nova saída
-      </button>
+      <div className="ml-auto flex flex-wrap items-center gap-2">
+        <button onClick={onAdd} className="inline-flex items-center gap-1 rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+          <Plus className="h-4 w-4" /> Nova saída
+        </button>
+        {onAddRows && <button onClick={() => onAddRows(1)} className="inline-flex items-center gap-1 rounded border border-border px-3 py-2 text-sm font-semibold hover:bg-muted"><Plus className="h-4 w-4" /> Linha</button>}
+        {onAddRows && <button onClick={() => onAddRows(5)} className="rounded border border-border px-3 py-2 text-sm font-semibold hover:bg-muted">+ 5 linhas</button>}
+      </div>
     </div>
   );
 }
