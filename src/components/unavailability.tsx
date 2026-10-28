@@ -37,7 +37,7 @@ export function UnavailabilityView({ data, update, date }: Props) {
       </label>
       <label className="space-y-1 text-sm font-semibold">Motivo
         <select aria-label="Motivo" className={field} value={draft.reason} onChange={e => setDraft({ ...draft, reason: e.target.value as Unavailability["reason"] })}>
-          {draft.resourceType === "vehicle" ? <option value="OFICINA">OFICINA</option> : <><option value="FOLGA">FOLGA</option><option value="ATESTADO">ATESTADO</option></>}
+          {draft.resourceType === "vehicle" ? <option value="OFICINA">OFICINA</option> : <><option value="FOLGA">FOLGA</option><option value="ATESTADO">ATESTADO</option><option value="FERIAS">FÉRIAS</option></>}
         </select>
       </label>
       <label className="space-y-1 text-sm font-semibold">De<input required type="date" className={field} value={draft.startDate} onChange={e => setDraft({ ...draft, startDate: e.target.value })} /></label>

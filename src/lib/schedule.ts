@@ -17,7 +17,7 @@ export interface Trip {
 }
 export interface Shift { date: string; time: string; names: string }
 
-export type UnavailabilityReason = "OFICINA" | "FOLGA" | "ATESTADO";
+export type UnavailabilityReason = "OFICINA" | "FOLGA" | "ATESTADO" | "FERIAS";
 export interface Unavailability {
   id: string;
   resourceType: "driver" | "vehicle";
