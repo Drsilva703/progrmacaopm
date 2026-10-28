@@ -68,7 +68,7 @@ function App() {
           {legacy && <Button size="sm" variant="outline" onClick={importLegacy}>Importar dados deste navegador ({legacy.trips.length} viagens)</Button>}
         </div>
         {tab !== "cadastros" && tab !== "bloqueios" && (
-          <DateBar date={date} setDate={setDate} step={tab === "mes" ? "mes" : tab === "semana" ? 7 : 1} onAdd={() => { newTrip(); goDay(); }} />
+          <DateBar date={date} setDate={setDate} step={tab === "mes" ? "mes" : tab === "semana" ? 7 : 1} onAdd={() => { newTrip(); goDay(); }} onAddRows={tab === "dia" ? addRows : undefined} />
         )}
         {tab === "dia" && <DaySheet data={data} update={update} date={date}/>}
         {tab === "semana" && <WeekView data={data} date={date} onPick={(d) => { setDate(d); setTab("dia"); }} />}
