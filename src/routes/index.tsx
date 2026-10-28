@@ -81,7 +81,7 @@ function App() {
   );
 }
 
-function DateBar({ date, setDate, step, onAdd, onAddRows }: { date: string; setDate: (d: string) => void; step: number | "mes"; onAdd: () => void; onAddRows?: (n: number) => void }) {
+function DateBar({ date, setDate, step, onAdd, onAddRows }: { date: string; setDate: (d: string) => void; step: number | "mes"; onAdd: () => void; onAddRows?: ((n: number) => void) | undefined }) {
   const move = (dir: number) => {
     if (step === "mes") { const d = fromISO(date); d.setMonth(d.getMonth() + dir, 1); setDate(toISO(d)); }
     else setDate(addDaysISO(date, step * dir));
