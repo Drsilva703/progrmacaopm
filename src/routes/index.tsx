@@ -38,6 +38,11 @@ function App() {
   const newTrip = () => update((d) => ({ ...d, trips: [...d.trips, {
     id: uid(), date, orders: [], routeId: "", vehicleId: "", driverId: "", status: "PROGRAMADO", days: 1, time: "06:00",
   }] }));
+  const addRows = (n: number) => update((dd) => ({
+    ...dd, trips: [...dd.trips, ...Array.from({ length: n }, (): Trip => ({
+      id: uid(), date, orders: [], routeId: "", vehicleId: "", driverId: "", status: "PROGRAMADO", days: 1, time: "06:00",
+    }))],
+  }));
   const goDay = () => setTab("dia");
   const icons: Record<Tab, typeof Truck> = { dia: Table2, semana: CalendarDays, mes: Calendar, recursos: Users, cadastros: Settings, bloqueios: Wrench };
 
@@ -63,7 +68,7 @@ function App() {
           {legacy && <Button size="sm" variant="outline" onClick={importLegacy}>Importar dados deste navegador ({legacy.trips.length} viagens)</Button>}
         </div>
         {tab !== "cadastros" && tab !== "bloqueios" && (
-          <DateBar date={date} setDate={setDate} step={tab === "mes" ? "mes" : tab === "semana" ? 7 : 1} onAdd={() => { newTrip(); goDay(); }} />
+          <DateBar date={date} setDate={setDate} step={tab === "mes" ? "mes" : tab === "semana" ? 7 : 1} onAdd={() => { newTrip(); goDay(); }} onAddRows={tab === "dia" ? addRows : undefined} />
         )}
         {tab === "dia" && <DaySheet data={data} update={update} date={date}/>}
         {tab === "semana" && <WeekView data={data} date={date} onPick={(d) => { setDate(d); setTab("dia"); }} />}
@@ -76,7 +81,7 @@ function App() {
   );
 }
 
-function DateBar({ date, setDate, step, onAdd }: { date: string; setDate: (d: string) => void; step: number | "mes"; onAdd: () => void }) {
+function DateBar({ date, setDate, step, onAdd, onAddRows }: { date: string; setDate: (d: string) => void; step: number | "mes"; onAdd: () => void; onAddRows?: ((n: number) => void) | undefined }) {
   const move = (dir: number) => {
     if (step === "mes") { const d = fromISO(date); d.setMonth(d.getMonth() + dir, 1); setDate(toISO(d)); }
     else setDate(addDaysISO(date, step * dir));
@@ -87,9 +92,13 @@ function DateBar({ date, setDate, step, onAdd }: { date: string; setDate: (d: st
       <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} className="rounded border border-input bg-card px-3 py-1.5" />
       <button onClick={() => move(1)} className="rounded border border-border p-2 hover:bg-muted"><ChevronRight className="h-4 w-4" /></button>
       <span className="font-display text-lg font-semibold uppercase">{weekday(date)}</span>
-      <button onClick={onAdd} className="ml-auto inline-flex items-center gap-1 rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
-        <Plus className="h-4 w-4" /> Nova saída
-      </button>
+      <div className="ml-auto flex flex-wrap items-center gap-2">
+        <button onClick={onAdd} className="inline-flex items-center gap-1 rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+          <Plus className="h-4 w-4" /> Nova saída
+        </button>
+        {onAddRows && <button onClick={() => onAddRows(1)} className="inline-flex items-center gap-1 rounded border border-border px-3 py-2 text-sm font-semibold hover:bg-muted"><Plus className="h-4 w-4" /> Linha</button>}
+        {onAddRows && <button onClick={() => onAddRows(5)} className="rounded border border-border px-3 py-2 text-sm font-semibold hover:bg-muted">+ 5 linhas</button>}
+      </div>
     </div>
   );
 }
@@ -166,11 +175,6 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
     }
     update((dd) => ({ ...dd, trips: dd.trips.map((x) => (x.id === id ? { ...x, ...p } : x)) }));
   };
-  const addRows = (n: number) => update((dd) => ({
-    ...dd, trips: [...dd.trips, ...Array.from({ length: n }, (): Trip => ({
-      id: uid(), date, orders: [], routeId: "", vehicleId: "", driverId: "", status: "PROGRAMADO", days: 1, time: "06:00",
-    }))],
-  }));
   const busyFor = (t: Trip, key: "driverId" | "vehicleId", id: string) =>
     findConflicts({ ...t, [key]: id }, data.trips)[key === "driverId" ? "driver" : "vehicle"].length > 0;
   const [d, m] = [date.slice(8), date.slice(5, 7)];
@@ -267,10 +271,6 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
             })}
           </tbody>
         </table>
-        <div className="flex gap-2 border-t border-sheet/30 bg-card px-3 py-2 print:hidden">
-          <button onClick={() => addRows(1)} className="inline-flex items-center gap-1 rounded border border-border px-3 py-1 text-sm font-semibold hover:bg-muted"><Plus className="h-4 w-4" /> Linha</button>
-          <button onClick={() => addRows(5)} className="rounded border border-border px-3 py-1 text-sm font-semibold hover:bg-muted">+ 5 linhas</button>
-        </div>
         <div className="flex flex-wrap items-center justify-center gap-2 bg-sheet px-4 py-2 font-display text-lg font-bold uppercase text-sheet-foreground">
           Plantão {d}/{m} – {weekday(date)}
           <input value={shift?.time ?? ""} onChange={(e) => setShift({ time: e.target.value })} placeholder="08:00" className="w-16 rounded bg-sheet-foreground/10 px-1 text-center" /> Hrs –
