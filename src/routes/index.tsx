@@ -271,10 +271,6 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
             })}
           </tbody>
         </table>
-        <div className="flex gap-2 border-t border-sheet/30 bg-card px-3 py-2 print:hidden">
-          <button onClick={() => addRows(1)} className="inline-flex items-center gap-1 rounded border border-border px-3 py-1 text-sm font-semibold hover:bg-muted"><Plus className="h-4 w-4" /> Linha</button>
-          <button onClick={() => addRows(5)} className="rounded border border-border px-3 py-1 text-sm font-semibold hover:bg-muted">+ 5 linhas</button>
-        </div>
         <div className="flex flex-wrap items-center justify-center gap-2 bg-sheet px-4 py-2 font-display text-lg font-bold uppercase text-sheet-foreground">
           Plantão {d}/{m} – {weekday(date)}
           <input value={shift?.time ?? ""} onChange={(e) => setShift({ time: e.target.value })} placeholder="08:00" className="w-16 rounded bg-sheet-foreground/10 px-1 text-center" /> Hrs –
