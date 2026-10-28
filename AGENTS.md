@@ -14,3 +14,4 @@
 - Browser-era data is imported only through an explicit whole-schedule replacement confirmation; never seed or normalize the shared dataset on page load.
 - Size daily-sheet columns from rendered cell values and loaded fonts within CSS-defined per-column bounds; keep measurement browser-only and independent of schedule persistence.
 - Store resource unavailabilities as an optional collection in the revisioned schedule document; share inclusive interval matching across the daily sheet, availability view and management screen to keep old schedules compatible without page-load normalization.
+- Keep the daily-sheet title inside the table header, spanning the data columns from Pedido to Horário saída, so it stays centered on the schedule; in print hide the controls inside cells rather than the cells themselves so column alignment survives.
