@@ -175,11 +175,6 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
     }
     update((dd) => ({ ...dd, trips: dd.trips.map((x) => (x.id === id ? { ...x, ...p } : x)) }));
   };
-  const addRows = (n: number) => update((dd) => ({
-    ...dd, trips: [...dd.trips, ...Array.from({ length: n }, (): Trip => ({
-      id: uid(), date, orders: [], routeId: "", vehicleId: "", driverId: "", status: "PROGRAMADO", days: 1, time: "06:00",
-    }))],
-  }));
   const busyFor = (t: Trip, key: "driverId" | "vehicleId", id: string) =>
     findConflicts({ ...t, [key]: id }, data.trips)[key === "driverId" ? "driver" : "vehicle"].length > 0;
   const [d, m] = [date.slice(8), date.slice(5, 7)];
