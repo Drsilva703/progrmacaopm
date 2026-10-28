@@ -26,12 +26,25 @@ export const Route = createFileRoute("/")({
 
 type Tab = "dia" | "semana" | "mes" | "recursos" | "cadastros" | "bloqueios";
 const TABS: [Tab, string][] = [["dia", "Programação do dia"], ["semana", "Semana"], ["mes", "Mês"], ["recursos", "Disponibilidade"], ["bloqueios", "Indisponibilidades"], ["cadastros", "Cadastros"]];
+/** Última data aberta neste navegador (preferência de visualização, não faz parte da programação). */
+const LAST_DATE_KEY = "programacao-ultima-data";
 
 function App() {
   const { data, update, status, error, retry, legacy, importLegacy } = useData();
   const [tab, setTab] = useState<Tab>("dia");
   const [date, setDate] = useState("2026-10-16");
   const [open, setOpen] = useState(true);
+  // Remember the last date the user opened, per browser.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(LAST_DATE_KEY);
+      if (saved) setDate(saved);
+    } catch { /* ignore storage errors */ }
+  }, []);
+  const changeDate = (d: string) => {
+    setDate(d);
+    try { localStorage.setItem(LAST_DATE_KEY, d); } catch { /* ignore storage errors */ }
+  };
 
   if (!data) return <div className="p-10 text-muted-foreground">{error || 'Carregando programação…'}{error && <Button onClick={retry} className="ml-3">Tentar novamente</Button>}</div>;
 
@@ -68,11 +81,11 @@ function App() {
           {legacy && <Button size="sm" variant="outline" onClick={importLegacy}>Importar dados deste navegador ({legacy.trips.length} viagens)</Button>}
         </div>
         {tab !== "cadastros" && tab !== "bloqueios" && (
-          <DateBar date={date} setDate={setDate} step={tab === "mes" ? "mes" : tab === "semana" ? 7 : 1} onAdd={() => { newTrip(); goDay(); }} onAddRows={tab === "dia" ? addRows : undefined} />
+          <DateBar date={date} setDate={changeDate} step={tab === "mes" ? "mes" : tab === "semana" ? 7 : 1} onAdd={() => { newTrip(); goDay(); }} onAddRows={tab === "dia" ? addRows : undefined} />
         )}
         {tab === "dia" && <DaySheet data={data} update={update} date={date}/>}
-        {tab === "semana" && <WeekView data={data} date={date} onPick={(d) => { setDate(d); setTab("dia"); }} />}
-        {tab === "mes" && <MonthView data={data} date={date} onPick={(d) => { setDate(d); setTab("dia"); }} />}
+        {tab === "semana" && <WeekView data={data} date={date} onPick={(d) => { changeDate(d); setTab("dia"); }} />}
+        {tab === "mes" && <MonthView data={data} date={date} onPick={(d) => { changeDate(d); setTab("dia"); }} />}
         {tab === "recursos" && <Availability data={data} date={date} />}
         {tab === "cadastros" && <Registry data={data} update={update} />}
         {tab === "bloqueios" && <UnavailabilityView data={data} update={update} date={date} />}
