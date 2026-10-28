@@ -11,7 +11,7 @@ describe("oficina e afastamentos", () => {
     expect(resourceBlocks([workshop], "vehicle", "FCB4403", "2026-10-21")).toEqual([]);
   });
   it("RONALDO de folga ou atestado não pode ser escalado até terça-feira", () => {
-    for (const reason of ["FOLGA", "ATESTADO"] as const) {
+    for (const reason of ["FOLGA", "ATESTADO", "FERIAS"] as const) {
       const block = { ...leave, reason };
       expect(resourceBlocks([block], "driver", "RONALDO", "2026-10-20")).toEqual([block]);
       expect(resourceBlocks([block], "driver", "RONALDO", "2026-10-21")).toEqual([]);
