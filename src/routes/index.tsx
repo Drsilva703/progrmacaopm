@@ -32,6 +32,17 @@ function App() {
   const [tab, setTab] = useState<Tab>("dia");
   const [date, setDate] = useState("2026-10-16");
   const [open, setOpen] = useState(true);
+  // Remember the last date the user opened, per browser.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(LAST_DATE_KEY);
+      if (saved) setDate(saved);
+    } catch { /* ignore storage errors */ }
+  }, []);
+  const changeDate = (d: string) => {
+    setDate(d);
+    try { localStorage.setItem(LAST_DATE_KEY, d); } catch { /* ignore storage errors */ }
+  };
 
   if (!data) return <div className="p-10 text-muted-foreground">{error || 'Carregando programação…'}{error && <Button onClick={retry} className="ml-3">Tentar novamente</Button>}</div>;
 
