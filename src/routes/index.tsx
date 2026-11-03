@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Trash2, Copy, AlertTriangle, Truck, Printer, ArrowUp, ArrowDown, Menu, Table2, CalendarDays, Calendar, Users, Settings, Wrench } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Copy, AlertTriangle, Truck, Printer, ArrowUp, ArrowDown, Menu, Table2, CalendarDays, Calendar, Users, Settings, Wrench, FileSpreadsheet } from "lucide-react";
 import { plannedRouteCodes,
   STATUSES, addDaysISO, arrivalDate, availableFrom, findConflicts, fmtBR, fromISO, toISO, weekday, resourceBlocks, tripBlocks,
   type Trip, type Status,
@@ -9,6 +9,7 @@ import { useData, uid, autofill, type Data } from "@/lib/store";
 import { Button } from '@/components/ui/button';
 import { useSheetColumnWidths } from '@/hooks/use-sheet-column-widths';
 import { UnavailabilityView } from '@/components/unavailability';
+import { MonthlyImportView } from '@/components/monthly-import';
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -24,8 +25,8 @@ export const Route = createFileRoute("/")({
   component: App,
 });
 
-type Tab = "dia" | "semana" | "mes" | "recursos" | "cadastros" | "bloqueios";
-const TABS: [Tab, string][] = [["dia", "Programação do dia"], ["semana", "Semana"], ["mes", "Mês"], ["recursos", "Disponibilidade"], ["bloqueios", "Indisponibilidades"], ["cadastros", "Cadastros"]];
+type Tab = "dia" | "semana" | "mes" | "recursos" | "cadastros" | "bloqueios" | "escala";
+const TABS: [Tab, string][] = [["dia", "Programação do dia"], ["semana", "Semana"], ["mes", "Mês"], ["recursos", "Disponibilidade"], ["bloqueios", "Indisponibilidades"], ["escala", "Escala mensal"], ["cadastros", "Cadastros"]];
 /** Última data aberta neste navegador (preferência de visualização, não faz parte da programação). */
 const LAST_DATE_KEY = "programacao-ultima-data";
 
@@ -57,7 +58,7 @@ function App() {
     }))],
   }));
   const goDay = () => setTab("dia");
-  const icons: Record<Tab, typeof Truck> = { dia: Table2, semana: CalendarDays, mes: Calendar, recursos: Users, cadastros: Settings, bloqueios: Wrench };
+  const icons: Record<Tab, typeof Truck> = { dia: Table2, semana: CalendarDays, mes: Calendar, recursos: Users, cadastros: Settings, bloqueios: Wrench, escala: FileSpreadsheet };
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -80,7 +81,7 @@ function App() {
           {error && <><span role="alert" className="text-destructive">{error}</span><Button size="sm" variant="outline" onClick={retry}>Tentar novamente</Button></>}
           {legacy && <Button size="sm" variant="outline" onClick={importLegacy}>Importar dados deste navegador ({legacy.trips.length} viagens)</Button>}
         </div>
-        {tab !== "cadastros" && tab !== "bloqueios" && (
+        {tab !== "cadastros" && tab !== "bloqueios" && tab !== "escala" && (
           <DateBar date={date} setDate={changeDate} step={tab === "mes" ? "mes" : tab === "semana" ? 7 : 1} onAdd={() => { newTrip(); goDay(); }} onAddRows={tab === "dia" ? addRows : undefined} />
         )}
         {tab === "dia" && <DaySheet data={data} update={update} date={date}/>}
@@ -89,6 +90,7 @@ function App() {
         {tab === "recursos" && <Availability data={data} date={date} />}
         {tab === "cadastros" && <Registry data={data} update={update} />}
         {tab === "bloqueios" && <UnavailabilityView data={data} update={update} date={date} />}
+        {tab === "escala" && <MonthlyImportView data={data} update={update} onDone={(d) => changeDate(d)} />}
       </main>
     </div>
   );
