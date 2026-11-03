@@ -297,8 +297,33 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
           {returning.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum retorno neste dia.</p> :
             returning.map((t) => <p key={t.id} className="text-sm"><b>{L.route(t.routeId)}</b> · {L.driver(t.driverId)} · {L.plate(t.vehicleId)} (saiu {fmtBR(t.date)})</p>)}
         </Panel>
-        <Panel title="Resumo do dia">
-          <p className="text-sm">{trips.length} saídas · {new Set(trips.map((t) => t.routeId)).size} rotas · {trips.filter((t) => { const c = findConflicts(t, data.trips); return c.driver.length + c.vehicle.length > 0; }).length} com conflito</p>
+        <Panel title="Por que está em vermelho">
+          {(() => {
+            const items = trips.flatMap((t, i) => {
+              const c = findConflicts(t, data.trips);
+              const b = tripBlocks(t, data.unavailabilities);
+              const span = (x: Trip) => `${fmtBR(x.date)} a ${fmtBR(arrivalDate(x.date, x.days))}`;
+              const reasons = [
+                ...b.driver.map((x) => `${L.driver(t.driverId)} está de ${x.reason} até ${fmtBR(x.endDate)}`),
+                ...c.driver.map((x) => `${L.driver(t.driverId)} ainda em rota ${L.route(x.routeId)} (${span(x)}) · livre em ${fmtBR(availableFrom(x.date, x.days))}`),
+                ...b.vehicle.map((x) => `${L.plate(t.vehicleId)} em ${x.reason} até ${fmtBR(x.endDate)}`),
+                ...c.vehicle.map((x) => `${L.plate(t.vehicleId)} ainda em rota ${L.route(x.routeId)} (${span(x)}) · livre em ${fmtBR(availableFrom(x.date, x.days))}`),
+              ];
+              return reasons.length ? [{ id: t.id, row: i + 1, route: L.route(t.routeId), reasons }] : [];
+            });
+            return (
+              <>
+                <p className="mb-2 text-sm">{trips.length} saídas · {items.length} com conflito</p>
+                {items.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum conflito na escala.</p> :
+                  <ul className="space-y-2">{items.map((it) => (
+                    <li key={it.id} className="rounded border border-destructive/30 bg-destructive/10 p-2 text-sm">
+                      <b>Linha {it.row} · {it.route || "sem rota"}</b>
+                      {it.reasons.map((r) => <p key={r} className="text-destructive">{r}</p>)}
+                    </li>
+                  ))}</ul>}
+              </>
+            );
+          })()}
         </Panel>
       </div>
     </div>
