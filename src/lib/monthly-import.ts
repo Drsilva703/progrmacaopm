@@ -53,7 +53,7 @@ export function matchDriver(name: string, drivers: Data["drivers"]) {
   for (const d of drivers) {
     const [f = "", ...r] = norm(d.name).split(" ");
     if (dist(first, f) > 1) continue;
-    const common = rest.filter((x) => x.length > 2 && r.includes(x)).length;
+    const common = rest.filter((x) => (x.length > 2 && r.includes(x)) || (x.length === 1 && r.some((y) => y.startsWith(x)))).length;
     if (common === 0 && (rest.length > 0 && r.length > 0)) continue;
     const score = common * 10 - dist(first, f);
     if (!best || score > best.score) best = { id: d.id, score };
