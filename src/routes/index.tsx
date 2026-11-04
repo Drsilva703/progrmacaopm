@@ -85,8 +85,8 @@ function App() {
           <DateBar date={date} setDate={changeDate} step={tab === "mes" ? "mes" : tab === "semana" ? 7 : 1} onAdd={() => { newTrip(); goDay(); }} onAddRows={tab === "dia" ? addRows : undefined} />
         )}
         {tab === "dia" && <DaySheet data={data} update={update} date={date}/>}
-        {tab === "semana" && <WeekView data={data} date={date} onPick={(d) => { changeDate(d); setTab("dia"); }} />}
-        {tab === "mes" && <MonthView data={data} date={date} onPick={(d) => { changeDate(d); setTab("dia"); }} />}
+        {tab === "semana" && <WeekView data={data} update={update} date={date} onPick={(d) => { changeDate(d); setTab("dia"); }} />}
+        {tab === "mes" && <MonthView data={data} update={update} date={date} onPick={(d) => { changeDate(d); setTab("dia"); }} />}
         {tab === "recursos" && <Availability data={data} date={date} />}
         {tab === "cadastros" && <Registry data={data} update={update} />}
         {tab === "bloqueios" && <UnavailabilityView data={data} update={update} date={date} />}
@@ -190,8 +190,10 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
     }
     update((dd) => ({ ...dd, trips: dd.trips.map((x) => (x.id === id ? { ...x, ...p } : x)) }));
   };
-  const busyFor = (t: Trip, key: "driverId" | "vehicleId", id: string) =>
-    findConflicts({ ...t, [key]: id }, data.trips)[key === "driverId" ? "driver" : "vehicle"].length > 0;
+  const busyFor = (t: Trip, key: "driverId" | "vehicleId", id: string) => {
+    const x = findConflicts({ ...t, [key]: id }, data.trips)[key === "driverId" ? "driver" : "vehicle"][0];
+    return x ? (x.date < t.date ? ` (em rota ${L.route(x.routeId)} até ${fmtBR(arrivalDate(x.date, x.days)).slice(0, 5)})` : " (ocupado)") : "";
+  };
   const [d, m] = [date.slice(8), date.slice(5, 7)];
 
   return (
@@ -248,13 +250,13 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
                   <td className="border border-sheet/20 p-0">
                     <select aria-label={`Veículo da linha ${i + 1}`} className={`${cell} ${c.vehicle.length || b.vehicle.length ? "text-destructive" : ""}`} value={t.vehicleId} onChange={(e) => patch(t.id, { vehicleId: e.target.value })}>
                       <option value="">—</option>
-                      {data.vehicles.map((v) => { const blocks = resourceBlocks(data.unavailabilities, "vehicle", v.id, t.date, arrivalDate(t.date, t.days)); return <option className={blocks.length ? "text-destructive" : ""} key={v.id} value={v.id}>{v.plate}{blocks.length ? ` (${[...new Set(blocks.map(b => b.reason))].join(" / ")})` : v.id !== t.vehicleId && busyFor(t, "vehicleId", v.id) ? " (ocupado)" : ""}</option>; })}
+                      {data.vehicles.map((v) => { const blocks = resourceBlocks(data.unavailabilities, "vehicle", v.id, t.date, arrivalDate(t.date, t.days)); return <option className={blocks.length ? "text-destructive" : ""} key={v.id} value={v.id}>{v.plate}{blocks.length ? ` (${[...new Set(blocks.map(b => b.reason))].join(" / ")})` : v.id !== t.vehicleId ? busyFor(t, "vehicleId", v.id) : ""}</option>; })}
                     </select>
                   </td>
                   <td className="border border-sheet/20 p-0">
                     <select aria-label={`Motorista da linha ${i + 1}`} className={`${cell} ${c.driver.length || b.driver.length ? "text-destructive" : ""}`} value={t.driverId} onChange={(e) => patch(t.id, { driverId: e.target.value })}>
                       <option value="">—</option>
-                      {data.drivers.map((v) => { const blocks = resourceBlocks(data.unavailabilities, "driver", v.id, t.date, arrivalDate(t.date, t.days)); return <option className={blocks.length ? "text-destructive" : ""} key={v.id} value={v.id}>{v.name}{blocks.length ? ` (${[...new Set(blocks.map(b => b.reason))].join(" / ")})` : v.id !== t.driverId && busyFor(t, "driverId", v.id) ? " (ocupado)" : ""}</option>; })}
+                      {data.drivers.map((v) => { const blocks = resourceBlocks(data.unavailabilities, "driver", v.id, t.date, arrivalDate(t.date, t.days)); return <option className={blocks.length ? "text-destructive" : ""} key={v.id} value={v.id}>{v.name}{blocks.length ? ` (${[...new Set(blocks.map(b => b.reason))].join(" / ")})` : v.id !== t.driverId ? busyFor(t, "driverId", v.id) : ""}</option>; })}
                     </select>
                   </td>
                   <td className="border border-sheet/20 px-1">
@@ -334,34 +336,43 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   return <div className="rounded-md border border-border bg-card p-4"><h3 className="mb-2 font-display font-bold uppercase">{title}</h3>{children}</div>;
 }
 
-function DayCell({ data, iso, onPick, dim }: { data: Data; iso: string; onPick: (d: string) => void; dim?: boolean }) {
+function DayCell({ data, iso, onPick, dim, update }: { data: Data; iso: string; onPick: (d: string) => void; dim?: boolean; update: (f: (d: Data) => Data) => void }) {
   const L = lookup(data);
   const out = data.trips.filter((t) => t.date === iso && t.status !== "CANCELADO");
+  const all = data.trips.filter((t) => t.date === iso).length;
   const back = data.trips.filter((t) => t.days > 1 && arrivalDate(t.date, t.days) === iso && t.status !== "CANCELADO");
+  const clear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`Esvaziar a programação de ${fmtBR(iso)}? ${all} saída(s) serão removidas.`)) return;
+    update((d) => ({ ...d, trips: d.trips.filter((t) => t.date !== iso), filled: [...new Set([...(d.filled ?? []), iso])] }));
+  };
   return (
-    <button onClick={() => onPick(iso)} className={`flex min-h-28 flex-col rounded border border-border bg-card p-2 text-left hover:border-primary ${dim ? "opacity-40" : ""}`}>
-      <span className="font-display text-sm font-bold">{fmtBR(iso).slice(0, 5)}</span>
+    <div role="button" tabIndex={0} onClick={() => onPick(iso)} onKeyDown={(e) => e.key === "Enter" && onPick(iso)} className={`flex min-h-28 cursor-pointer flex-col rounded border border-border bg-card p-2 text-left hover:border-primary ${dim ? "opacity-40" : ""}`}>
+      <div className="flex items-center justify-between">
+        <span className="font-display text-sm font-bold">{fmtBR(iso).slice(0, 5)}</span>
+        {all > 0 && <button type="button" aria-label={`Esvaziar ${fmtBR(iso)}`} title="Esvaziar este dia" onClick={clear} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>}
+      </div>
       {out.length > 0 && <span className="mt-1 rounded bg-sheet px-1 text-xs font-semibold text-sheet-foreground">{out.length} saídas</span>}
       {back.length > 0 && <span className="mt-1 rounded bg-status-done px-1 text-xs font-semibold">{back.length} retornos</span>}
       <div className="mt-1 space-y-0.5 text-[11px] leading-tight text-muted-foreground">
         {out.slice(0, 4).map((t) => <div key={t.id}>{L.route(t.routeId)} · {L.driver(t.driverId)}</div>)}
         {out.length > 4 && <div>+{out.length - 4}</div>}
       </div>
-    </button>
-  );
-}
-
-function WeekView({ data, date, onPick }: { data: Data; date: string; onPick: (d: string) => void }) {
-  const start = addDaysISO(date, -fromISO(date).getDay());
-  const days = Array.from({ length: 7 }, (_, i) => addDaysISO(start, i));
-  return (
-    <div className="grid grid-cols-1 gap-2 md:grid-cols-7">
-      {days.map((d) => <div key={d}><p className="mb-1 text-center text-xs font-bold uppercase text-muted-foreground">{weekday(d).split("-")[0] ?? ""}</p><DayCell data={data} iso={d} onPick={onPick} /></div>)}
     </div>
   );
 }
 
-function MonthView({ data, date, onPick }: { data: Data; date: string; onPick: (d: string) => void }) {
+function WeekView({ data, date, onPick, update }: { data: Data; date: string; onPick: (d: string) => void; update: (f: (d: Data) => Data) => void }) {
+  const start = addDaysISO(date, -fromISO(date).getDay());
+  const days = Array.from({ length: 7 }, (_, i) => addDaysISO(start, i));
+  return (
+    <div className="grid grid-cols-1 gap-2 md:grid-cols-7">
+      {days.map((d) => <div key={d}><p className="mb-1 text-center text-xs font-bold uppercase text-muted-foreground">{weekday(d).split("-")[0] ?? ""}</p><DayCell data={data} iso={d} onPick={onPick} update={update} /></div>)}
+    </div>
+  );
+}
+
+function MonthView({ data, date, onPick, update }: { data: Data; date: string; onPick: (d: string) => void; update: (f: (d: Data) => Data) => void }) {
   const first = fromISO(date.slice(0, 8) + "01");
   const start = addDaysISO(toISO(first), -first.getDay());
   const days = Array.from({ length: 42 }, (_, i) => addDaysISO(start, i));
@@ -371,7 +382,7 @@ function MonthView({ data, date, onPick }: { data: Data; date: string; onPick: (
       <h2 className="mb-2 font-display text-xl font-bold uppercase">{first.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</h2>
       <div className="grid grid-cols-7 gap-1">
         {["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"].map((w) => <p key={w} className="text-center text-xs font-bold text-muted-foreground">{w}</p>)}
-        {days.map((d) => <DayCell key={d} data={data} iso={d} onPick={onPick} dim={!d.startsWith(month)} />)}
+        {days.map((d) => <DayCell key={d} data={data} iso={d} onPick={onPick} update={update} dim={!d.startsWith(month)} />)}
       </div>
     </div>
   );
