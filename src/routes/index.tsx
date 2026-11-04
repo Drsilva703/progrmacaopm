@@ -27,25 +27,39 @@ export const Route = createFileRoute("/")({
 
 type Tab = "dia" | "semana" | "mes" | "recursos" | "cadastros" | "bloqueios" | "escala";
 const TABS: [Tab, string][] = [["dia", "Programação do dia"], ["semana", "Semana"], ["mes", "Mês"], ["recursos", "Disponibilidade"], ["bloqueios", "Indisponibilidades"], ["escala", "Escala mensal"], ["cadastros", "Cadastros"]];
-/** Última data aberta neste navegador (preferência de visualização, não faz parte da programação). */
+/** Última tela aberta neste navegador: aba + data (preferência de visualização, não faz parte da programação). */
+const LAST_VIEW_KEY = "programacao-ultima-tela";
 const LAST_DATE_KEY = "programacao-ultima-data";
+const isTab = (v: unknown): v is Tab => TABS.some(([k]) => k === v);
+const isDate = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+
+/** Aba e data da última visita; sem nada salvo, abre no dia de hoje. */
+function savedView(): { tab: Tab; date: string } {
+  const today = toISO(new Date());
+  if (typeof window === "undefined") return { tab: "dia", date: today };
+  try {
+    const raw = localStorage.getItem(LAST_VIEW_KEY);
+    if (raw) {
+      const v = JSON.parse(raw) as { tab?: unknown; date?: unknown };
+      return { tab: isTab(v.tab) ? v.tab : "dia", date: isDate(v.date) ? v.date : today };
+    }
+    const old = localStorage.getItem(LAST_DATE_KEY); // versão anterior guardava só a data
+    if (isDate(old)) return { tab: "dia", date: old };
+  } catch { /* ignore storage errors */ }
+  return { tab: "dia", date: today };
+}
 
 function App() {
   const { data, update, status, error, retry, legacy, importLegacy } = useData();
-  const [tab, setTab] = useState<Tab>("dia");
-  const [date, setDate] = useState("2026-10-16");
+  const [view, setView] = useState(savedView);
+  const { tab, date } = view;
   const [open, setOpen] = useState(true);
-  // Remember the last date the user opened, per browser.
+  const setTab = (t: Tab) => setView((v) => ({ ...v, tab: t }));
+  const changeDate = (d: string) => setView((v) => ({ ...v, date: d }));
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(LAST_DATE_KEY);
-      if (saved) setDate(saved);
-    } catch { /* ignore storage errors */ }
-  }, []);
-  const changeDate = (d: string) => {
-    setDate(d);
-    try { localStorage.setItem(LAST_DATE_KEY, d); } catch { /* ignore storage errors */ }
-  };
+    try { localStorage.setItem(LAST_VIEW_KEY, JSON.stringify(view)); } catch { /* ignore storage errors */ }
+  }, [view]);
+
 
   if (!data) return <div className="p-10 text-muted-foreground">{error || 'Carregando programação…'}{error && <Button onClick={retry} className="ml-3">Tentar novamente</Button>}</div>;
 
