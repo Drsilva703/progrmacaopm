@@ -85,8 +85,8 @@ function App() {
           <DateBar date={date} setDate={changeDate} step={tab === "mes" ? "mes" : tab === "semana" ? 7 : 1} onAdd={() => { newTrip(); goDay(); }} onAddRows={tab === "dia" ? addRows : undefined} />
         )}
         {tab === "dia" && <DaySheet data={data} update={update} date={date}/>}
-        {tab === "semana" && <WeekView data={data} date={date} onPick={(d) => { changeDate(d); setTab("dia"); }} />}
-        {tab === "mes" && <MonthView data={data} date={date} onPick={(d) => { changeDate(d); setTab("dia"); }} />}
+        {tab === "semana" && <WeekView data={data} update={update} date={date} onPick={(d) => { changeDate(d); setTab("dia"); }} />}
+        {tab === "mes" && <MonthView data={data} update={update} date={date} onPick={(d) => { changeDate(d); setTab("dia"); }} />}
         {tab === "recursos" && <Availability data={data} date={date} />}
         {tab === "cadastros" && <Registry data={data} update={update} />}
         {tab === "bloqueios" && <UnavailabilityView data={data} update={update} date={date} />}
@@ -358,21 +358,21 @@ function DayCell({ data, iso, onPick, dim, update }: { data: Data; iso: string; 
         {out.slice(0, 4).map((t) => <div key={t.id}>{L.route(t.routeId)} · {L.driver(t.driverId)}</div>)}
         {out.length > 4 && <div>+{out.length - 4}</div>}
       </div>
-    </button>
-  );
-}
-
-function WeekView({ data, date, onPick }: { data: Data; date: string; onPick: (d: string) => void }) {
-  const start = addDaysISO(date, -fromISO(date).getDay());
-  const days = Array.from({ length: 7 }, (_, i) => addDaysISO(start, i));
-  return (
-    <div className="grid grid-cols-1 gap-2 md:grid-cols-7">
-      {days.map((d) => <div key={d}><p className="mb-1 text-center text-xs font-bold uppercase text-muted-foreground">{weekday(d).split("-")[0] ?? ""}</p><DayCell data={data} iso={d} onPick={onPick} /></div>)}
     </div>
   );
 }
 
-function MonthView({ data, date, onPick }: { data: Data; date: string; onPick: (d: string) => void }) {
+function WeekView({ data, date, onPick, update }: { data: Data; date: string; onPick: (d: string) => void; update: (f: (d: Data) => Data) => void }) {
+  const start = addDaysISO(date, -fromISO(date).getDay());
+  const days = Array.from({ length: 7 }, (_, i) => addDaysISO(start, i));
+  return (
+    <div className="grid grid-cols-1 gap-2 md:grid-cols-7">
+      {days.map((d) => <div key={d}><p className="mb-1 text-center text-xs font-bold uppercase text-muted-foreground">{weekday(d).split("-")[0] ?? ""}</p><DayCell data={data} iso={d} onPick={onPick} update={update} /></div>)}
+    </div>
+  );
+}
+
+function MonthView({ data, date, onPick, update }: { data: Data; date: string; onPick: (d: string) => void; update: (f: (d: Data) => Data) => void }) {
   const first = fromISO(date.slice(0, 8) + "01");
   const start = addDaysISO(toISO(first), -first.getDay());
   const days = Array.from({ length: 42 }, (_, i) => addDaysISO(start, i));
@@ -382,7 +382,7 @@ function MonthView({ data, date, onPick }: { data: Data; date: string; onPick: (
       <h2 className="mb-2 font-display text-xl font-bold uppercase">{first.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</h2>
       <div className="grid grid-cols-7 gap-1">
         {["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"].map((w) => <p key={w} className="text-center text-xs font-bold text-muted-foreground">{w}</p>)}
-        {days.map((d) => <DayCell key={d} data={data} iso={d} onPick={onPick} dim={!d.startsWith(month)} />)}
+        {days.map((d) => <DayCell key={d} data={data} iso={d} onPick={onPick} update={update} dim={!d.startsWith(month)} />)}
       </div>
     </div>
   );
