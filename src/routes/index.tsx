@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { useSheetColumnWidths } from '@/hooks/use-sheet-column-widths';
 import { UnavailabilityView } from '@/components/unavailability';
 import { MonthlyImportView } from '@/components/monthly-import';
+import { readLastView, writeLastView } from '@/lib/last-view';
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -27,25 +29,20 @@ export const Route = createFileRoute("/")({
 
 type Tab = "dia" | "semana" | "mes" | "recursos" | "cadastros" | "bloqueios" | "escala";
 const TABS: [Tab, string][] = [["dia", "Programação do dia"], ["semana", "Semana"], ["mes", "Mês"], ["recursos", "Disponibilidade"], ["bloqueios", "Indisponibilidades"], ["escala", "Escala mensal"], ["cadastros", "Cadastros"]];
-/** Última data aberta neste navegador (preferência de visualização, não faz parte da programação). */
-const LAST_DATE_KEY = "programacao-ultima-data";
-
 function App() {
   const { data, update, status, error, retry, legacy, importLegacy } = useData();
-  const [tab, setTab] = useState<Tab>("dia");
-  const [date, setDate] = useState("2026-10-16");
+  const [view, setView] = useState(() => readLastView(
+    typeof window === "undefined" ? null : localStorage, TABS.map(([k]) => k), toISO(new Date()),
+  ));
+  const { tab, date } = view;
   const [open, setOpen] = useState(true);
-  // Remember the last date the user opened, per browser.
+  const setTab = (t: Tab) => setView((v) => ({ ...v, tab: t }));
+  const changeDate = (d: string) => setView((v) => ({ ...v, date: d }));
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(LAST_DATE_KEY);
-      if (saved) setDate(saved);
-    } catch { /* ignore storage errors */ }
-  }, []);
-  const changeDate = (d: string) => {
-    setDate(d);
-    try { localStorage.setItem(LAST_DATE_KEY, d); } catch { /* ignore storage errors */ }
-  };
+    writeLastView(typeof window === "undefined" ? null : localStorage, view);
+  }, [view]);
+
+
 
   if (!data) return <div className="p-10 text-muted-foreground">{error || 'Carregando programação…'}{error && <Button onClick={retry} className="ml-3">Tentar novamente</Button>}</div>;
 
