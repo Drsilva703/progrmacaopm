@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { useSheetColumnWidths } from '@/hooks/use-sheet-column-widths';
 import { UnavailabilityView } from '@/components/unavailability';
 import { MonthlyImportView } from '@/components/monthly-import';
+import { readLastView, writeLastView } from '@/lib/last-view';
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
