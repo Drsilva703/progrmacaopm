@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Copy, AlertTriangle, Truck, Printer, ArrowUp, ArrowDown, Menu, Table2, CalendarDays, Calendar, Users, Settings, Wrench, FileSpreadsheet } from "lucide-react";
 import { plannedRouteCodes,
   STATUSES, addDaysISO, arrivalDate, availableFrom, findConflicts, fmtBR, fromISO, toISO, weekday, resourceBlocks, tripBlocks,
-  type Trip, type Status,
+  statusOf, type Trip, type Status,
 } from "@/lib/schedule";
 import { useData, uid, autofill, type Data } from "@/lib/store";
 import { Button } from '@/components/ui/button';
@@ -123,7 +123,7 @@ const lookup = (data: Data) => ({
 
 const statusClass: Record<Status, string> = {
   PROGRAMADO: "bg-muted text-foreground",
-  CARREGANDO: "bg-status-load text-foreground",
+  CARREGADO: "bg-status-load text-foreground",
   "EM ROTA": "bg-primary text-primary-foreground",
   "CONCLUÍDO": "bg-status-done text-foreground",
   CANCELADO: "bg-destructive text-destructive-foreground",
@@ -257,8 +257,8 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
                     </select>
                   </td>
                   <td className="border border-sheet/20 px-1">
-                    <select value={t.status} onChange={(e) => patch(t.id, { status: e.target.value as Status })}
-                      className={`w-full min-w-0 appearance-none rounded px-2 py-0.5 text-center text-xs font-bold ${statusClass[t.status]}`}>
+                    <select value={statusOf(t.status)} onChange={(e) => patch(t.id, { status: e.target.value as Status })}
+                      className={`w-full min-w-0 appearance-none rounded px-2 py-0.5 text-center text-xs font-bold ${statusClass[statusOf(t.status)]}`}>
                       {STATUSES.map((s) => <option key={s}>{s}</option>)}
                     </select>
                   </td>

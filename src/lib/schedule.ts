@@ -1,5 +1,11 @@
-export type Status = "PROGRAMADO" | "CARREGANDO" | "EM ROTA" | "CONCLUÍDO" | "CANCELADO";
-export const STATUSES: Status[] = ["PROGRAMADO", "CARREGANDO", "EM ROTA", "CONCLUÍDO", "CANCELADO"];
+export type Status = "PROGRAMADO" | "CARREGADO" | "EM ROTA" | "CONCLUÍDO" | "CANCELADO";
+export const STATUSES: Status[] = ["PROGRAMADO", "CARREGADO", "EM ROTA", "CONCLUÍDO", "CANCELADO"];
+
+/** Escalas antigas gravaram CARREGANDO; a opção de hoje é CARREGADO (mesmo significado). */
+export function statusOf(value: string): Status {
+  if (value === "CARREGANDO") return "CARREGADO";
+  return (STATUSES as string[]).includes(value) ? (value as Status) : "PROGRAMADO";
+}
 
 export interface Route { id: string; code: string; days: number }
 export interface Driver { id: string; name: string }
