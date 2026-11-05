@@ -37,3 +37,15 @@ describe("rotas previstas", () => {
   });
   it("domingo vazio", () => expect(plannedRouteCodes("2026-10-18")).toEqual([]));
 });
+
+describe("status da viagem", () => {
+  it("CARREGADO substitui CARREGANDO na lista de opções", () => {
+    expect(STATUSES).toEqual(["PROGRAMADO", "CARREGADO", "EM ROTA", "CONCLUÍDO", "CANCELADO"]);
+    expect(STATUSES).not.toContain("CARREGANDO");
+  });
+  it("escalas antigas com CARREGANDO aparecem como CARREGADO", () => {
+    expect(statusOf("CARREGANDO")).toBe("CARREGADO");
+    expect(statusOf("EM ROTA")).toBe("EM ROTA");
+    expect(statusOf("valor desconhecido")).toBe("PROGRAMADO");
+  });
+});
