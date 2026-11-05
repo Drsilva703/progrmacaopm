@@ -17,4 +17,5 @@
 - Keep the daily-sheet title inside the table header, spanning the data columns from Pedido to Horário saída, so it stays centered on the schedule; in print hide the controls inside cells rather than the cells themselves so column alignment survives.
 - Monthly .xlsx schedules import in the browser through a pure parser (src/lib/monthly-import.ts) that replaces only that month's PM_FEC_01..10 trips and its own tagged off-day blocks, after explicit confirmation; SSA routes stay untouched so manual work survives re-imports.
 - Keep the opened tab and date as a browser view preference in a pure, testable module (src/lib/last-view.ts) that never touches schedule persistence; with nothing saved it defaults to the current day, never to a hardcoded date.
+- Keep native date/time/number picker controls out of the cell's text flow (CSS in src/styles.css) so daily-sheet values stay centered in their columns; a status value read from an older schedule is mapped at display time (statusOf), never rewritten on load.
 
