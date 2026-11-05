@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { arrivalDate, availableFrom, findConflicts, weekday, type Trip } from "./schedule";
+import { arrivalDate, availableFrom, findConflicts, weekday, statusOf, STATUSES, type Trip } from "./schedule";
 
 const t = (o: Partial<Trip>): Trip => ({
   id: "x", date: "2026-10-16", orders: [], routeId: "r", vehicleId: "v1", driverId: "d1",
-  status: "CARREGANDO", days: 3, time: "06:00", ...o,
+  status: "CARREGADO", days: 3, time: "06:00", ...o,
 });
 
 describe("schedule rules", () => {
@@ -36,4 +36,16 @@ describe("rotas previstas", () => {
       expect(plannedRouteCodes(d)).toEqual(["PM_FEC_SSA", "CO_FEC_SSA", "PM_FEC_04", "PM_FEC_05", "PM_FEC_06"]);
   });
   it("domingo vazio", () => expect(plannedRouteCodes("2026-10-18")).toEqual([]));
+});
+
+describe("status da viagem", () => {
+  it("CARREGADO substitui CARREGANDO na lista de opções", () => {
+    expect(STATUSES).toEqual(["PROGRAMADO", "CARREGADO", "EM ROTA", "CONCLUÍDO", "CANCELADO"]);
+    expect((STATUSES as string[])).not.toContain("CARREGANDO");
+  });
+  it("escalas antigas com CARREGANDO aparecem como CARREGADO", () => {
+    expect(statusOf("CARREGANDO")).toBe("CARREGADO");
+    expect(statusOf("EM ROTA")).toBe("EM ROTA");
+    expect(statusOf("valor desconhecido")).toBe("PROGRAMADO");
+  });
 });
