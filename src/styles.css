@@ -196,6 +196,13 @@
   margin: 0;
   opacity: 0.55;
 }
+/* The number spinner also reserves width, so it is dropped instead of shifting the value. */
+.schedule-sheet input[type="number"]::-webkit-outer-spin-button,
+.schedule-sheet input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
 @media print {
   .schedule-sheet .sheet-column-selection,
   .schedule-sheet .sheet-column-actions { visibility: collapse; }
