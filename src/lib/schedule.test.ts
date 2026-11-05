@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { arrivalDate, availableFrom, findConflicts, weekday, type Trip } from "./schedule";
+import { arrivalDate, availableFrom, findConflicts, weekday, statusOf, STATUSES, type Trip } from "./schedule";
 
 const t = (o: Partial<Trip>): Trip => ({
   id: "x", date: "2026-10-16", orders: [], routeId: "r", vehicleId: "v1", driverId: "d1",
-  status: "CARREGANDO", days: 3, time: "06:00", ...o,
+  status: "CARREGADO", days: 3, time: "06:00", ...o,
 });
 
 describe("schedule rules", () => {

@@ -178,6 +178,24 @@
 .sheet-column-arrival { --column-min: 92; --column-max: 120; }
 .sheet-column-time { --column-min: 120; --column-max: 150; }
 .sheet-column-actions { --column-min: 136; --column-max: 136; }
+/* Native date/time pickers: the icon must not push the value away from the column center. */
+.schedule-sheet input[type="date"],
+.schedule-sheet input[type="time"] {
+  text-align: center;
+  position: relative;
+}
+.schedule-sheet input[type="date"]::-webkit-datetime-edit,
+.schedule-sheet input[type="time"]::-webkit-datetime-edit { justify-content: center; }
+.schedule-sheet input[type="date"]::-webkit-calendar-picker-indicator,
+.schedule-sheet input[type="time"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  left: auto;
+  right: 2px;
+  top: 50%;
+  translate: 0 -50%;
+  margin: 0;
+  opacity: 0.55;
+}
 @media print {
   .schedule-sheet .sheet-column-selection,
   .schedule-sheet .sheet-column-actions { visibility: collapse; }
