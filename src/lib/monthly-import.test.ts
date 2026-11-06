@@ -25,8 +25,8 @@ describe("escala mensal", () => {
     expect(r2.data.trips[0]?.orders).toEqual([]);
     expect(r2.preview.orders).toBe(0);
   });
-  it("F seguidos viram uma folga só", () => {
-    expect(res.data.unavailabilities).toEqual([expect.objectContaining({ resourceId: "d1", reason: "FOLGA", startDate: "2026-11-01", endDate: "2026-11-02" })]);
+  it("folgas (F) não são preenchidas", () => {
+    expect(res.data.unavailabilities ?? []).toHaveLength(0);
   });
   it("PM (SSA) não cria viagem", () => expect(res.data.trips.some((t) => t.routeId === "s")).toBe(false));
 });

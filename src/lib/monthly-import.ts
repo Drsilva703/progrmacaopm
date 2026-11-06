@@ -1,6 +1,5 @@
 import type { Data } from "./store";
 import type { Trip, Unavailability, UnavailabilityReason } from "./schedule";
-import { addDaysISO } from "./schedule";
 
 export type Cell = string | number | null | undefined;
 export interface MonthlyRow { driver: string; plate: string; days: Cell[] }
