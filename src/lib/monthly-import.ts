@@ -4,7 +4,7 @@ import { addDaysISO } from "./schedule";
 
 export type Cell = string | number | null | undefined;
 export interface MonthlyRow { driver: string; plate: string; days: Cell[] }
-export interface MonthlyPreview { trips: number; offs: number; newDrivers: string[]; newPlates: string[]; skipped: number }
+export interface MonthlyPreview { trips: number; offs: number; orders: number; newDrivers: string[]; newPlates: string[]; skipped: number }
 
 const MONTHS = ["JANEIRO", "FEVEREIRO", "MARCO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
 const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
@@ -61,13 +61,18 @@ export function matchDriver(name: string, drivers: Data["drivers"]) {
   return best?.id;
 }
 
-const cellCode = (c: Cell): { route?: string; off?: UnavailabilityReason } => {
-  const s = norm(String(c ?? ""));
+/** Célula de saída: "4" ou "4/12345" (rota/pedido). Só o dia de saída gera viagem. */
+const cellCode = (c: Cell): { route?: string; off?: UnavailabilityReason; order?: string } => {
+  const raw = String(c ?? "").trim();
+  const s = norm(raw);
   if (s === "F") return { off: "FOLGA" };
   if (s.startsWith("FERIAS")) return { off: "FERIAS" };
   if (s.startsWith("ATESTADO")) return { off: "ATESTADO" };
-  const n = Number(s);
-  if (Number.isInteger(n) && n >= 1 && n <= 10) return { route: `PM_FEC_${String(n).padStart(2, "0")}` };
+  const m = s.match(/^(\d{1,2})(?:[ /-](\d+))?$/);
+  if (m) {
+    const n = Number(m[1]);
+    if (n >= 1 && n <= 10) return { route: `PM_FEC_${String(n).padStart(2, "0")}`, order: m[2] };
+  }
   return {};
 };
 
