@@ -87,7 +87,7 @@ export function applyMonthly(d: Data, month: string, rows: MonthlyRow[], newId: 
   const pmRoutes = new Set(d.routes.filter((r) => /^PM_FEC_(0[1-9]|10)$/i.test(r.code)).map((r) => r.id));
   const trips: Trip[] = d.trips.filter((t) => !(t.date >= first && t.date <= last && pmRoutes.has(t.routeId)));
   const blocks: Unavailability[] = (d.unavailabilities ?? []).filter((b) => !(b.notes === NOTE && b.startDate >= first && b.endDate <= last));
-  let added = 0, offs = 0, skipped = 0;
+  let added = 0, offs = 0, skipped = 0, orders = 0;
   for (const row of rows) {
     let driverId = matchDriver(row.driver, drivers);
     if (!driverId) { driverId = newId(); drivers.push({ id: driverId, name: row.driver.toUpperCase() }); newDrivers.push(row.driver); }
@@ -98,7 +98,7 @@ export function applyMonthly(d: Data, month: string, rows: MonthlyRow[], newId: 
     }
     let open: Unavailability | null = null;
     dates.forEach((date, i) => {
-      const { route, off } = cellCode(row.days[i]);
+      const { route, off, order } = cellCode(row.days[i]);
       if (off) {
         if (open && open.reason === off && addDaysISO(open.endDate, 1) === date) open.endDate = date;
         else { open = { id: newId(), resourceType: "driver", resourceId: driverId, reason: off, startDate: date, endDate: date, notes: NOTE }; blocks.push(open); offs++; }
@@ -108,14 +108,15 @@ export function applyMonthly(d: Data, month: string, rows: MonthlyRow[], newId: 
       if (!route) return;
       const r = d.routes.find((x) => x.code.toUpperCase() === route);
       if (!r) { skipped++; return; }
-      trips.push({ id: newId(), date, orders: [], routeId: r.id, vehicleId, driverId, status: "PROGRAMADO", days: r.days, time: "06:00" });
+      trips.push({ id: newId(), date, orders: order ? [order] : [], routeId: r.id, vehicleId, driverId, status: "PROGRAMADO", days: r.days, time: "06:00" });
       added++;
+      if (order) orders++;
     });
   }
   drivers.sort((a, b) => a.name.localeCompare(b.name));
   const filled = Array.from(new Set([...(d.filled ?? []), ...dates]));
   return {
     data: { ...d, drivers, vehicles, trips, unavailabilities: blocks, filled },
-    preview: { trips: added, offs, newDrivers, newPlates, skipped },
+    preview: { trips: added, offs, orders, newDrivers, newPlates, skipped },
   };
 }
