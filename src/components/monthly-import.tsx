@@ -40,7 +40,7 @@ export function MonthlyImportView({ data, update, onDone }: { data: Data; update
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-4">
       <h2 className="flex items-center gap-2 text-xl font-bold uppercase"><FileSpreadsheet className="h-5 w-5" /> Escala mensal</h2>
-      <p className="text-sm opacity-80">Envie a planilha do mês: motorista na coluna A, placa na coluna C e os dias a partir da coluna D. Números de 1 a 10 viram as rotas PM_FEC_01 a PM_FEC_10 (06:00) e “F” vira folga. Rotas SSA não são criadas.</p>
+      <p className="text-sm opacity-80">Envie a planilha do mês: motorista na coluna A, placa na coluna C e os dias a partir da coluna D. Só os dias de saída em rota viram viagem: o número de 1 a 10 vira a rota PM_FEC_01 a PM_FEC_10 (06:00) com motorista e placa da linha. Para já sair com pedido, escreva “4/12345” (rota/pedido). “F” vira folga e rotas SSA não são criadas.</p>
       <label className="inline-flex cursor-pointer items-center gap-2 rounded border border-sheet-border px-3 py-2 text-sm font-semibold hover:bg-sheet-foreground/10">
         Escolher arquivo .xlsx
         <input type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void read(f); e.target.value = ""; }} />
@@ -55,7 +55,7 @@ export function MonthlyImportView({ data, update, onDone }: { data: Data; update
           </label>
           {preview && (
             <ul className="list-disc pl-5 text-sm">
-              <li>{preview.trips} viagens PM_FEC serão programadas</li>
+              <li>{preview.trips} viagens PM_FEC serão programadas{preview.orders > 0 ? ` (${preview.orders} já com pedido)` : ""}</li>
               <li>{preview.offs} períodos de folga/férias serão registrados</li>
               {preview.newDrivers.length > 0 && <li>Motoristas novos no cadastro: {preview.newDrivers.join(", ")}</li>}
               {preview.newPlates.length > 0 && <li>Placas novas no cadastro: {preview.newPlates.join(", ")}</li>}
