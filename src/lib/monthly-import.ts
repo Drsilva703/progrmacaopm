@@ -71,7 +71,7 @@ const cellCode = (c: Cell): { route?: string; off?: UnavailabilityReason; order?
   const m = s.match(/^(\d{1,2})(?:[ /-](\d+))?$/);
   if (m) {
     const n = Number(m[1]);
-    if (n >= 1 && n <= 10) return { route: `PM_FEC_${String(n).padStart(2, "0")}`, order: m[2] };
+    if (n >= 1 && n <= 10) return m[2] ? { route: `PM_FEC_${String(n).padStart(2, "0")}`, order: m[2] } : { route: `PM_FEC_${String(n).padStart(2, "0")}` };
   }
   return {};
 };
