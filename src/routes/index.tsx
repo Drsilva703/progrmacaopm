@@ -284,11 +284,11 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
               );
             })}
           </tbody>
-          {/* Shared heading measurement keeps the label aligned in either sidebar state. */}
+          {/* Header and footer span the same columns, independent of sidebar width. */}
           <tfoot>
             <tr className="font-display text-lg font-bold uppercase">
               <td className="border border-sheet/30 p-0" />
-              <td colSpan={9} className="border border-sheet/30 px-4 py-2 text-center">
+              <td colSpan={9} className="border border-sheet/30 p-0 text-center">
                 <div className="sheet-shift mx-auto flex items-center gap-2 rounded bg-sheet px-4 py-3 text-sheet-foreground">
                   <span className="shrink-0 whitespace-nowrap">Plantão {d}/{m} – {weekday(date)}</span>
                   <input aria-label="Horário do plantão" value={shift?.time ?? ""} onChange={(e) => setShift({ time: e.target.value })} placeholder="08:00" className="w-20 shrink-0 rounded bg-sheet-foreground/10 px-2 py-1 text-center print:hidden" /> <span className="shrink-0 whitespace-nowrap">Hrs –</span>
