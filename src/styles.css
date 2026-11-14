@@ -167,6 +167,10 @@
 }
 .schedule-sheet input,
 .schedule-sheet select { min-width: 0; max-width: 100%; }
+.sheet-shift {
+  width: calc(var(--sheet-heading-width, 680px) + 32px);
+  max-width: 100%;
+}
 .sheet-column-selection { --column-min: 32; --column-max: 32; }
 .sheet-column-orders { --column-min: 90; --column-max: 360; }
 .sheet-column-route { --column-min: 100; --column-max: 260; }

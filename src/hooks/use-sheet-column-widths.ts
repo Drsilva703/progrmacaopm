@@ -48,6 +48,8 @@ export function useSheetColumnWidths() {
         return result;
       });
       table.style.width = `${widths.reduce((sum, width) => sum + width, 0)}px`;
+      const heading = table.querySelector<HTMLElement>(".sheet-heading");
+      if (heading) table.style.setProperty("--sheet-heading-width", `${heading.getBoundingClientRect().width}px`);
     };
     const schedule = () => {
       cancelAnimationFrame(frame);

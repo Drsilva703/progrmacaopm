@@ -214,7 +214,7 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
             <tr className="bg-sheet text-sheet-foreground">
               <th className="border border-sheet/30 p-0" />
               <th colSpan={9} className="border border-sheet/30 px-4 py-2 text-center">
-                <h2 className="font-display text-xl font-bold uppercase tracking-wide">Programação de viagem para saída em {d}/{m} – {weekday(date)}</h2>
+                <h2 className="sheet-heading inline-block whitespace-nowrap font-display text-xl font-bold uppercase tracking-wide">Programação de viagem para saída em {d}/{m} – {weekday(date)}</h2>
               </th>
               <th className="border border-sheet/30 p-1 text-right">
                 <button onClick={() => window.print()} className="print:hidden"><Printer className="h-5 w-5" /></button>
@@ -284,15 +284,15 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
               );
             })}
           </tbody>
-          {/* The plantão bar sits in the same column span as the title, so both center together. */}
+          {/* Shared heading measurement keeps the label aligned in either sidebar state. */}
           <tfoot>
-            <tr className="bg-sheet font-display text-lg font-bold uppercase text-sheet-foreground">
+            <tr className="font-display text-lg font-bold uppercase">
               <td className="border border-sheet/30 p-0" />
               <td colSpan={9} className="border border-sheet/30 px-4 py-2 text-center">
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  Plantão {d}/{m} – {weekday(date)}
-                  <input value={shift?.time ?? ""} onChange={(e) => setShift({ time: e.target.value })} placeholder="08:00" className="w-16 rounded bg-sheet-foreground/10 px-1 text-center print:hidden" /> Hrs –
-                  <input value={shift?.names ?? ""} onChange={(e) => setShift({ names: e.target.value.toUpperCase() })} placeholder="NOMES DO PLANTÃO" className="w-64 rounded bg-sheet-foreground/10 px-2 print:hidden" />
+                <div className="sheet-shift mx-auto flex items-center gap-2 rounded bg-sheet px-4 py-3 text-sheet-foreground">
+                  <span className="shrink-0 whitespace-nowrap">Plantão {d}/{m} – {weekday(date)}</span>
+                  <input aria-label="Horário do plantão" value={shift?.time ?? ""} onChange={(e) => setShift({ time: e.target.value })} placeholder="08:00" className="w-20 shrink-0 rounded bg-sheet-foreground/10 px-2 py-1 text-center print:hidden" /> <span className="shrink-0 whitespace-nowrap">Hrs –</span>
+                  <input aria-label="Nomes do plantão" value={shift?.names ?? ""} onChange={(e) => setShift({ names: e.target.value.toUpperCase() })} placeholder="NOMES DO PLANTÃO" className="min-w-0 flex-1 rounded bg-sheet-foreground/10 px-3 py-1 print:hidden" />
                 </div>
               </td>
               <td className="border border-sheet/30 p-0" />
