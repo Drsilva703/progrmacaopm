@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Copy, AlertTriangle, Truck, Printer, ArrowUp, ArrowDown, Menu, Table2, CalendarDays, Calendar, Users, Settings, Wrench, FileSpreadsheet } from "lucide-react";
 import { plannedRouteCodes,
   STATUSES, addDaysISO, arrivalDate, availableFrom, findConflicts, fmtBR, fromISO, toISO, weekday, resourceBlocks, tripBlocks,
@@ -133,6 +133,19 @@ const cell = "w-full appearance-none bg-transparent px-1 py-1 text-center font-s
 
 function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) => Data) => void; date: string }) {
   const tableRef = useSheetColumnWidths();
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const [titleW, setTitleW] = useState(0);
+  // The plantão label is left-aligned inside a box as wide as the title, so its
+  // first word starts on the same vertical line as "Programação".
+  useEffect(() => {
+    const el = titleRef.current;
+    if (!el) return;
+    const measure = () => setTitleW(el.offsetWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [date]);
   const L = lookup(data);
   useEffect(() => { update((dd) => autofill(dd, date, plannedRouteCodes(date))); }, [date, update]);
   const trips = data.trips.filter((t) => t.date === date);
@@ -214,7 +227,7 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
             <tr className="bg-sheet text-sheet-foreground">
               <th className="border border-sheet/30 p-0" />
               <th colSpan={9} className="border border-sheet/30 px-4 py-2 text-center">
-                <h2 className="font-display text-xl font-bold uppercase tracking-wide">Programação de viagem para saída em {d}/{m} – {weekday(date)}</h2>
+                <h2 ref={titleRef} className="inline-block font-display text-xl font-bold uppercase tracking-wide">Programação de viagem para saída em {d}/{m} – {weekday(date)}</h2>
               </th>
               <th className="border border-sheet/30 p-1 text-right">
                 <button onClick={() => window.print()} className="print:hidden"><Printer className="h-5 w-5" /></button>
@@ -289,10 +302,10 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
             <tr className="bg-sheet font-display text-lg font-bold uppercase text-sheet-foreground">
               <td className="border border-sheet/30 p-0" />
               <td colSpan={9} className="border border-sheet/30 px-4 py-2 text-center">
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  Plantão {d}/{m} – {weekday(date)}
-                  <input value={shift?.time ?? ""} onChange={(e) => setShift({ time: e.target.value })} placeholder="08:00" className="w-16 rounded bg-sheet-foreground/10 px-1 text-center print:hidden" /> Hrs –
-                  <input value={shift?.names ?? ""} onChange={(e) => setShift({ names: e.target.value.toUpperCase() })} placeholder="NOMES DO PLANTÃO" className="w-64 rounded bg-sheet-foreground/10 px-2 print:hidden" />
+                <div className="mx-auto whitespace-nowrap text-left font-display text-xl font-bold uppercase tracking-wide" style={{ width: titleW || undefined }}>Plantão {d}/{m} – {weekday(date)}</div>
+                <div className="mt-1 flex flex-wrap items-center justify-center gap-2 text-sm font-semibold normal-case print:hidden">
+                  <input value={shift?.time ?? ""} onChange={(e) => setShift({ time: e.target.value })} placeholder="08:00" className="w-16 rounded bg-sheet-foreground/10 px-1 text-center" /> Hrs –
+                  <input value={shift?.names ?? ""} onChange={(e) => setShift({ names: e.target.value.toUpperCase() })} placeholder="NOMES DO PLANTÃO" className="w-64 rounded bg-sheet-foreground/10 px-2" />
                 </div>
               </td>
               <td className="border border-sheet/30 p-0" />
