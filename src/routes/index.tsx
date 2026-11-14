@@ -284,12 +284,21 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
               );
             })}
           </tbody>
+          {/* The plantão bar sits in the same column span as the title, so both center together. */}
+          <tfoot>
+            <tr className="bg-sheet font-display text-lg font-bold uppercase text-sheet-foreground">
+              <td className="border border-sheet/30 p-0" />
+              <td colSpan={9} className="border border-sheet/30 px-4 py-2 text-center">
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  Plantão {d}/{m} – {weekday(date)}
+                  <input value={shift?.time ?? ""} onChange={(e) => setShift({ time: e.target.value })} placeholder="08:00" className="w-16 rounded bg-sheet-foreground/10 px-1 text-center print:hidden" /> Hrs –
+                  <input value={shift?.names ?? ""} onChange={(e) => setShift({ names: e.target.value.toUpperCase() })} placeholder="NOMES DO PLANTÃO" className="w-64 rounded bg-sheet-foreground/10 px-2 print:hidden" />
+                </div>
+              </td>
+              <td className="border border-sheet/30 p-0" />
+            </tr>
+          </tfoot>
         </table>
-        <div className="flex flex-wrap items-center justify-center gap-2 bg-sheet px-4 py-2 font-display text-lg font-bold uppercase text-sheet-foreground">
-          Plantão {d}/{m} – {weekday(date)}
-          <input value={shift?.time ?? ""} onChange={(e) => setShift({ time: e.target.value })} placeholder="08:00" className="w-16 rounded bg-sheet-foreground/10 px-1 text-center" /> Hrs –
-          <input value={shift?.names ?? ""} onChange={(e) => setShift({ names: e.target.value.toUpperCase() })} placeholder="NOMES DO PLANTÃO" className="w-64 rounded bg-sheet-foreground/10 px-2" />
-        </div>
       </div>
       <div className="grid gap-4 md:grid-cols-2 print:hidden">
         <Panel title={`Retornos previstos em ${fmtBR(date)}`}>
