@@ -167,7 +167,7 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
   };
   const returning = data.trips.filter((t) => t.days > 1 && arrivalDate(t.date, t.days) === date && t.status !== "CANCELADO");
   const shift = data.shifts.find((s) => s.date === date);
-  const setShift = (patch: Partial<{ time: string; names: string }>) => update((d) => {
+  const setShift = (patch: Partial<{ time: string; names: string; text: string }>) => update((d) => {
     const cur = d.shifts.find((s) => s.date === date) ?? { date, time: "08:00", names: "" };
     return { ...d, shifts: [...d.shifts.filter((s) => s.date !== date), { ...cur, ...patch }] };
   });
@@ -192,6 +192,7 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
     return x ? (x.date < t.date ? ` (em rota ${L.route(x.routeId)} até ${fmtBR(arrivalDate(x.date, x.days)).slice(0, 5)})` : " (ocupado)") : "";
   };
   const [d, m] = [date.slice(8), date.slice(5, 7)];
+  const shiftText = shift?.text ?? `Plantão ${d}/${m} – ${weekday(date)}${shift?.time ? ` ${shift.time} Hrs` : ""}${shift?.names ? ` – ${shift.names}` : ""}`;
 
   return (
     <div className="space-y-6">
@@ -288,12 +289,9 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
           <tfoot>
             <tr className="font-display text-lg font-bold uppercase">
               <td className="border border-sheet/30 p-0" />
-              <td colSpan={9} className="border border-sheet/30 p-0 text-center">
-                <div className="sheet-shift mx-auto flex items-center gap-2 rounded bg-sheet px-4 py-3 text-sheet-foreground">
-                  <span className="shrink-0 whitespace-nowrap">Plantão {d}/{m} – {weekday(date)}</span>
-                  <input aria-label="Horário do plantão" value={shift?.time ?? ""} onChange={(e) => setShift({ time: e.target.value })} placeholder="08:00" className="w-20 shrink-0 rounded bg-sheet-foreground/10 px-2 py-1 text-center print:hidden" /> <span className="shrink-0 whitespace-nowrap">Hrs –</span>
-                  <input aria-label="Nomes do plantão" value={shift?.names ?? ""} onChange={(e) => setShift({ names: e.target.value.toUpperCase() })} placeholder="NOMES DO PLANTÃO" className="min-w-0 flex-1 rounded bg-sheet-foreground/10 px-3 py-1 print:hidden" />
-                </div>
+              <td colSpan={9} className="border border-sheet/30 bg-sheet p-0 text-center text-sheet-foreground">
+                <input aria-label="Texto do plantão" value={shiftText} onChange={(e) => setShift({ text: e.target.value })} className="sheet-shift block appearance-none bg-transparent px-4 py-3 text-center font-display text-xl font-bold outline-none focus:ring-2 focus:ring-inset focus:ring-sheet-accent print:hidden" />
+                <span className="hidden whitespace-pre-wrap px-4 py-3 print:block">{shiftText}</span>
               </td>
               <td className="border border-sheet/30 p-0" />
             </tr>
