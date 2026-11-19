@@ -288,12 +288,12 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
           {/* Header and footer span the same columns, independent of sidebar width. */}
           <tfoot>
             <tr className="font-display text-lg font-bold uppercase">
-              <td className="border border-sheet/30 p-0" />
+              <td className="border border-sheet/30 bg-sheet p-0" />
               <td colSpan={9} className="border border-sheet/30 bg-sheet p-0 text-center text-sheet-foreground">
                 <input aria-label="Texto do plantão" value={shiftText} onChange={(e) => setShift({ text: e.target.value })} className="sheet-shift block appearance-none bg-transparent px-4 py-3 text-center font-display text-xl font-bold outline-none focus:ring-2 focus:ring-inset focus:ring-sheet-accent print:hidden" />
                 <span className="hidden whitespace-pre-wrap px-4 py-3 print:block">{shiftText}</span>
               </td>
-              <td className="border border-sheet/30 p-0" />
+              <td className="border border-sheet/30 bg-sheet p-0" />
             </tr>
           </tfoot>
         </table>
