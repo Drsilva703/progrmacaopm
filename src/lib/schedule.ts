@@ -10,6 +10,9 @@ export function statusOf(value: string): Status {
 export interface Route { id: string; code: string; days: number }
 export interface Driver { id: string; name: string }
 export interface Vehicle { id: string; plate: string }
+export const TRIP_COLORS = ["yellow", "green", "blue", "orange", "red", "purple"] as const;
+export type TripColor = (typeof TRIP_COLORS)[number];
+
 export interface Trip {
   id: string;
   date: string; // yyyy-mm-dd (saída)
@@ -20,6 +23,16 @@ export interface Trip {
   status: Status;
   days: number; // duração
   time: string; // HH:MM
+  color?: TripColor; // destaque visual, sem significado operacional
+}
+
+export function paintSelectedTrips(trips: Trip[], selected: ReadonlySet<string>, color?: TripColor): Trip[] {
+  return trips.map((trip) => {
+    if (!selected.has(trip.id)) return trip;
+    if (color) return { ...trip, color };
+    const { color: _removed, ...withoutColor } = trip;
+    return withoutColor;
+  });
 }
 export interface Shift { date: string; time: string; names: string; text?: string }
 

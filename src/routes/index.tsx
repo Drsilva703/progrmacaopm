@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Trash2, Copy, AlertTriangle, Truck, Printer, ArrowUp, ArrowDown, Menu, Table2, CalendarDays, Calendar, Users, Settings, Wrench, FileSpreadsheet } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Copy, AlertTriangle, Truck, Printer, ArrowUp, ArrowDown, Menu, Table2, CalendarDays, Calendar, Users, Settings, Wrench, FileSpreadsheet, X } from "lucide-react";
 import { plannedRouteCodes,
   STATUSES, addDaysISO, arrivalDate, availableFrom, findConflicts, fmtBR, fromISO, toISO, weekday, resourceBlocks, tripBlocks,
-  statusOf, type Trip, type Status,
+  statusOf, paintSelectedTrips, type Trip, type Status, type TripColor,
 } from "@/lib/schedule";
 import { useData, uid, autofill, type Data } from "@/lib/store";
 import { Button } from '@/components/ui/button';
@@ -129,6 +129,23 @@ const statusClass: Record<Status, string> = {
   CANCELADO: "bg-destructive text-destructive-foreground",
 };
 
+const tripColorClass: Record<TripColor, string> = {
+  yellow: "bg-trip-yellow",
+  green: "bg-trip-green",
+  blue: "bg-trip-blue",
+  orange: "bg-trip-orange",
+  red: "bg-trip-red",
+  purple: "bg-trip-purple",
+};
+const tripColorOptions: { value: TripColor; label: string }[] = [
+  { value: "yellow", label: "Amarelo" },
+  { value: "green", label: "Verde" },
+  { value: "blue", label: "Azul" },
+  { value: "orange", label: "Laranja" },
+  { value: "red", label: "Vermelho" },
+  { value: "purple", label: "Roxo" },
+];
+
 const cell = "w-full appearance-none bg-transparent px-1 py-1 text-center font-semibold outline-none focus:bg-card focus:ring-2 focus:ring-primary";
 
 function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) => Data) => void; date: string }) {
@@ -154,6 +171,7 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
   });
   const delSel = () => { if (sel.size && confirm(`Excluir ${sel.size} linha(s)?`)) { update((dd) => ({ ...dd, trips: dd.trips.filter((x) => !sel.has(x.id)) })); setSel(new Set()); } };
   const applyOrder = () => { const o = bulkOrder.split(/[,\s]+/).filter(Boolean); update((dd) => ({ ...dd, trips: dd.trips.map((x) => sel.has(x.id) ? { ...x, orders: o } : x) })); };
+  const paintSelected = (color?: TripColor) => update((dd) => ({ ...dd, trips: paintSelectedTrips(dd.trips, sel, color) }));
   const pasteOrders = (e: React.ClipboardEvent, startId: string) => {
     const lines = e.clipboardData.getData("text").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     const targets = sel.has(startId) && sel.size > 1 && lines.length === 1 ? trips.filter((t) => sel.has(t.id)) : null;
@@ -201,6 +219,16 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
           <b>{sel.size} selecionada(s)</b>
           <input value={bulkOrder} onChange={(e) => setBulkOrder(e.target.value)} placeholder="Nº do pedido" className="rounded border border-input bg-background px-2 py-1" />
           <button onClick={applyOrder} className="rounded bg-primary px-3 py-1 font-semibold text-primary-foreground">Aplicar pedido</button>
+          <div className="flex items-center gap-1.5" aria-label="Cor das linhas selecionadas">
+            <span className="mr-1 text-xs font-semibold text-muted-foreground">Cor da linha</span>
+            {tripColorOptions.map(({ value, label }) => (
+              <button key={value} type="button" aria-label={`Pintar linhas de ${label.toLowerCase()}`} title={label}
+                onClick={() => paintSelected(value)}
+                className={`h-7 w-7 rounded-full border-2 border-card ring-1 ring-sheet/30 transition hover:scale-110 ${tripColorClass[value]}`} />
+            ))}
+            <button type="button" aria-label="Remover cor das linhas" title="Sem cor" onClick={() => paintSelected()}
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-sheet/30 bg-card text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+          </div>
           <button onClick={delSel} className="inline-flex items-center gap-1 rounded bg-destructive px-3 py-1 font-semibold text-destructive-foreground"><Trash2 className="h-4 w-4" /> Excluir selecionadas</button>
           <button onClick={() => setSel(new Set())} className="ml-auto text-muted-foreground hover:underline">Limpar seleção</button>
         </div>
@@ -232,8 +260,9 @@ function DaySheet({ data, update, date }: { data: Data; update: (f: (d: Data) =>
               const c = findConflicts(t, data.trips);
               const b = tripBlocks(t, data.unavailabilities);
               const conflict = c.driver.length > 0 || c.vehicle.length > 0 || b.driver.length > 0 || b.vehicle.length > 0;
+              const background = (t.color && tripColorClass[t.color]) || (t.orders.length ? "bg-sheet-row" : "bg-card");
               return (
-                <tr key={t.id} className={`${sel.has(t.id) ? "bg-primary/20" : t.orders.length ? "bg-sheet-row" : "bg-card"} text-center font-semibold`}>
+                <tr key={t.id} className={`${background} ${sel.has(t.id) ? "outline outline-2 -outline-offset-2 outline-primary" : ""} text-center font-semibold`}>
                   <td className="border border-sheet/20"><input type="checkbox" className="print:hidden" checked={sel.has(t.id)} onChange={() => toggle(t.id)} /></td>
                   <td className="border border-sheet/20 p-0">
                     <input key={t.orders.join(" ")} className={cell} defaultValue={t.orders.join(" ")} placeholder="-"

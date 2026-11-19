@@ -58,6 +58,12 @@
   --color-sheet-row: var(--sheet-row);
   --color-status-load: var(--status-load);
   --color-status-done: var(--status-done);
+  --color-trip-yellow: var(--trip-yellow);
+  --color-trip-green: var(--trip-green);
+  --color-trip-blue: var(--trip-blue);
+  --color-trip-orange: var(--trip-orange);
+  --color-trip-red: var(--trip-red);
+  --color-trip-purple: var(--trip-purple);
   --font-display: "Barlow Condensed", sans-serif;
   --font-sans: "Barlow", sans-serif;
   --color-sidebar: var(--sidebar);
@@ -79,6 +85,12 @@
   --sheet-row: oklch(0.85 0.07 45);
   --status-load: oklch(0.88 0.12 90);
   --status-done: oklch(0.85 0.12 150);
+  --trip-yellow: oklch(0.94 0.12 100);
+  --trip-green: oklch(0.9 0.1 150);
+  --trip-blue: oklch(0.9 0.07 250);
+  --trip-orange: oklch(0.88 0.12 65);
+  --trip-red: oklch(0.9 0.08 25);
+  --trip-purple: oklch(0.9 0.07 310);
   --background: oklch(0.975 0.004 250);
   --foreground: oklch(0.129 0.042 264.695);
   --card: oklch(1 0 0);
@@ -130,6 +142,12 @@
   --accent-foreground: oklch(0.984 0.003 247.858);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.984 0.003 247.858);
+  --trip-yellow: oklch(0.48 0.09 100);
+  --trip-green: oklch(0.43 0.08 150);
+  --trip-blue: oklch(0.42 0.07 250);
+  --trip-orange: oklch(0.46 0.09 65);
+  --trip-red: oklch(0.44 0.09 25);
+  --trip-purple: oklch(0.43 0.07 310);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.551 0.027 264.364);

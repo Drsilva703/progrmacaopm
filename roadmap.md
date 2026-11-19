@@ -12,4 +12,5 @@
 # Grade do dia
 - [x] Substituir a opção "CARREGANDO" por "CARREGADO" na coluna Status, lendo escalas antigas sem quebrar.
 - [x] Centralizar as colunas da grade (Saída, Horário saída e Dias) dentro das células.
+- [x] Pintar uma ou várias linhas selecionadas e remover a cor, mantendo o destaque salvo na nuvem.
 - [ ] Evitar que a coluna Pedido corte pedidos longos quando excede a largura máxima (2026307 / 2026308).

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { arrivalDate, availableFrom, findConflicts, weekday, statusOf, STATUSES, type Trip } from "./schedule";
+import { arrivalDate, availableFrom, findConflicts, weekday, statusOf, STATUSES, paintSelectedTrips, type Trip } from "./schedule";
 
 const t = (o: Partial<Trip>): Trip => ({
   id: "x", date: "2026-10-16", orders: [], routeId: "r", vehicleId: "v1", driverId: "d1",
@@ -47,5 +47,20 @@ describe("status da viagem", () => {
     expect(statusOf("CARREGANDO")).toBe("CARREGADO");
     expect(statusOf("EM ROTA")).toBe("EM ROTA");
     expect(statusOf("valor desconhecido")).toBe("PROGRAMADO");
+  });
+});
+
+describe("cores das linhas", () => {
+  it("pinta somente as linhas selecionadas", () => {
+    const first = t({ id: "a" });
+    const other = t({ id: "b", color: "red" });
+    const result = paintSelectedTrips([first, other], new Set(["a"]), "blue");
+    expect(result[0]?.color).toBe("blue");
+    expect(result[1]).toBe(other);
+  });
+  it("remove a cor sem apagar os dados da viagem", () => {
+    const result = paintSelectedTrips([t({ id: "a", color: "purple", orders: ["2026307"] })], new Set(["a"]));
+    expect(result[0]).not.toHaveProperty("color");
+    expect(result[0]?.orders).toEqual(["2026307"]);
   });
 });
